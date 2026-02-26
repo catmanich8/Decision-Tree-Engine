@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decision Tree — Liquid Glass</title>
+<style>
+/* ═══════════════════════════════════════════
+   DARK LIQUID GLASS — Apple-inspired design
+   ═══════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+/* Fallback: если Google Fonts недоступен, system-ui выглядит аналогично */
+
+:root {
+  --bg: #09090b;
+  --bg2: #0c0c10;
+  --glass: rgba(255,255,255,0.04);
+  --glass2: rgba(255,255,255,0.07);
+  --glass3: rgba(255,255,255,0.10);
+  --glass-border: rgba(255,255,255,0.08);
+  --glass-border-hover: rgba(255,255,255,0.15);
+  --text: #f4f4f5;
+  --text2: #a1a1aa;
+  --text3: #71717a;
+  --accent: #818cf8;
+  --accent2: #6366f1;
+  --green: #34d399;
+  --green-glow: rgba(52,211,153,0.15);
+  --amber: #fbbf24;
+  --amber-glow: rgba(251,191,36,0.15);
+  --red: #f87171;
+  --red-glow: rgba(248,113,113,0.15);
+  --pink: #f472b6;
+  --pink-glow: rgba(244,114,182,0.15);
+  --cyan: #22d3ee;
+  --cyan-glow: rgba(34,211,238,0.1);
+  --blur: 20px;
+  --r: 16px;
+  --r-sm: 10px;
+  --r-xs: 6px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  font-size: 13px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Ambient background effect */
+body::before {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background:
+    radial-gradient(ellipse 600px 400px at 20% 20%, rgba(99,102,241,0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 500px 500px at 80% 80%, rgba(244,114,182,0.05) 0%, transparent 70%),
+    radial-gradient(ellipse 400px 300px at 60% 30%, rgba(34,211,238,0.04) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+  animation: ambientShift 20s ease-in-out infinite alternate;
+}
+
+@keyframes ambientShift {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  100% { transform: translate(-3%, -2%) rotate(2deg); }
+}
+
+/* Glass card mixin */
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+}
+.glass:hover {
+  border-color: var(--glass-border-hover);
+}
+
+.glass-sm {
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-sm);
+  transition: var(--transition);
+}
+
+/* ── Layout ── */
+.app {
+  position: relative;
+  z-index: 1;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 20px 24px;
+}
+
+/* ── Header ── */
+.header {
+  padding: 28px 32px;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.06), rgba(244,114,182,0.04));
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(99,102,241,0.15);
+  border-radius: 20px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+.header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+}
+
+.header h1 {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #f4f4f5, #a1a1aa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header .subtitle {
+  color: var(--text3);
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 400;
+}
+
+.header .subtitle span {
+  font-weight: 600;
+}
+
+.stats-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.stat-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 10px 18px;
+  text-align: center;
+  min-width: 80px;
+  transition: var(--transition);
+}
+.stat-card:hover {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.12);
+  transform: translateY(-1px);
+}
+.stat-card .num {
+  font-size: 22px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent), var(--cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.stat-card .label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text3);
+  font-weight: 600;
+}
+
+/* ── Info panel ── */
+.info-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+@media(max-width:900px) { .info-panel { grid-template-columns: 1fr; } }
+
+.info-card {
+  padding: 20px 24px;
+}
+
+.info-card .section-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 10px;
+}
+
+.info-card p, .info-card li {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.7;
+}
+
+.info-card ul, .info-card ol {
+  padding-left: 16px;
+}
+.info-card li { margin-bottom: 4px; }
+
+.info-card code {
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  color: var(--cyan);
+  background: var(--cyan-glow);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.info-sub {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: var(--accent) !important;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-top: 14px !important;
+  margin-bottom: 8px !important;
+  display: block;
+}
+
+/* ── Expandable sections ── */
+.expand-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.expand-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.expand-header {
+  padding: 14px 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+  transition: var(--transition);
+}
+.expand-header:hover {
+  background: rgba(255,255,255,0.02);
+}
+
+.expand-header .expand-title {
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.expand-header .expand-icon {
+  font-size: 10px;
+  color: var(--text3);
+  transition: transform 0.3s ease;
+}
+.expand-card.open .expand-icon {
+  transform: rotate(90deg);
+}
+
+.expand-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.expand-card.open .expand-body {
+  max-height: 4000px;
+}
+
+.expand-content {
+  padding: 0 20px 20px;
+  border-top: 1px solid var(--glass-border);
+}
+
+/* ── Filters ── */
+.filters-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.filter-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 0 4px;
+}
+
+.filter-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--glass);
+  color: var(--text3);
+  transition: var(--transition);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-family: inherit;
+  outline: none;
+}
+.filter-btn:hover {
+  border-color: var(--glass-border-hover);
+  color: var(--text2);
+  background: var(--glass2);
+}
+.filter-btn.active {
+  background: linear-gradient(135deg, rgba(99,102,241,0.3), rgba(139,92,246,0.2));
+  border-color: rgba(99,102,241,0.4);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(99,102,241,0.2);
+}
+
+.filter-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--glass-border);
+  margin: 0 6px;
+}
+
+/* ── Main area ── */
+.main-area {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 16px;
+  margin-bottom: 20px;
+  align-items: start;
+}
+@media(max-width:1100px) { .main-area { grid-template-columns: 1fr; } }
+
+/* Graph */
+.graph-container {
+  overflow: visible;
+  position: relative;
+  padding: 16px;
+}
+
+#svg { display: block; width: 100%; height: auto; }
+
+/* Node styles in SVG */
+.svg-node { cursor: pointer; transition: opacity 0.2s; }
+.svg-node:hover { opacity: 0.85; }
+.svg-node.selected { opacity: 1; }
+.svg-node.dimmed { opacity: 0.25; }
+
+/* Detail panel — sticky, прокручивается вместе со страницей */
+.detail-panel {
+  padding: 24px;
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
+  position: sticky;
+  top: 16px;
+  align-self: start;
+}
+.detail-panel::-webkit-scrollbar { width: 4px; }
+.detail-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+.detail-panel h2 {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  margin-bottom: 12px;
+}
+
+.detail-panel h3 {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 16px 0 8px;
+}
+
+.detail-panel p {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.7;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  margin: 2px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.src-tag {
+  font-family: 'SF Mono', 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--cyan);
+  background: var(--cyan-glow);
+  padding: 3px 8px;
+  border-radius: var(--r-xs);
+}
+
+/* ── Bottom tabs ── */
+.bottom-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.bottom-tab {
+  padding: 8px 18px;
+  border: 1px solid color-mix(in srgb, var(--tab-clr, #666) 20%, transparent);
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--tab-clr, #666) 8%, transparent);
+  color: color-mix(in srgb, var(--tab-clr, #999) 70%, #aaa);
+  transition: var(--transition);
+  font-family: inherit;
+  outline: none;
+}
+.bottom-tab:hover {
+  color: var(--tab-clr, var(--text2));
+  background: color-mix(in srgb, var(--tab-clr, #666) 18%, transparent);
+  border-color: color-mix(in srgb, var(--tab-clr, #666) 35%, transparent);
+}
+.bottom-tab.active {
+  background: color-mix(in srgb, var(--tab-clr, #6366f1) 25%, transparent);
+  border-color: color-mix(in srgb, var(--tab-clr, #6366f1) 40%, transparent);
+  color: #fff;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--tab-clr, #6366f1) 20%, transparent);
+}
+
+.tab-panel {
+  display: none;
+  padding: 24px;
+  margin-bottom: 16px;
+  animation: fadeIn 0.3s ease;
+}
+.tab-panel.visible { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Tables ── */
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 11px;
+  margin: 8px 0;
+}
+
+th {
+  background: rgba(255,255,255,0.03);
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 700;
+  color: var(--text3);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid var(--glass-border);
+}
+th:first-child { border-radius: var(--r-xs) 0 0 0; }
+th:last-child { border-radius: 0 var(--r-xs) 0 0; }
+
+td {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  color: var(--text2);
+  vertical-align: top;
+}
+tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* Badges */
+.badge {
+  font-size: 9px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.b-pass { background: var(--green-glow); color: var(--green); }
+.b-fail { background: var(--red-glow); color: var(--red); }
+.b-gate { background: var(--amber-glow); color: var(--amber); }
+.b-hard { background: var(--red-glow); color: var(--red); }
+.b-info { background: rgba(99,102,241,0.12); color: var(--accent); }
+
+pre {
+  font-family: 'SF Mono', 'JetBrains Mono', monospace;
+  font-size: 11px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--glass-border);
+  padding: 14px 18px;
+  border-radius: var(--r-sm);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  color: var(--cyan);
+  line-height: 1.7;
+}
+
+/* ── Footer ── */
+.footer {
+  text-align: center;
+  color: var(--text3);
+  font-size: 10px;
+  padding: 16px;
+  font-weight: 500;
+}
+
+/* ── Responsive ── */
+@media(max-width:900px) {
+  .app { padding: 12px; }
+  .header { padding: 20px; }
+  .header h1 { font-size: 22px; }
+  .main-area { min-height: auto; }
+}
+
+/* ── Playbook component cards ── */
+.playbook-card {
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-sm);
+  margin-bottom: 8px;
+  transition: var(--transition);
+}
+.playbook-card:hover {
+  background: rgba(255,255,255,0.04);
+  border-color: var(--glass-border-hover);
+}
+.playbook-card .card-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.playbook-card .card-desc {
+  font-size: 11px;
+  color: var(--text3);
+  line-height: 1.6;
+}
+
+/* ── Color indicator dots ── */
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+/* ── Callout boxes ── */
+.callout {
+  padding: 12px 16px;
+  border-radius: var(--r-sm);
+  border: 1px solid;
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 10px 0;
+}
+.callout-info {
+  background: rgba(99,102,241,0.06);
+  border-color: rgba(99,102,241,0.15);
+  color: var(--text2);
+}
+.callout-warn {
+  background: rgba(251,191,36,0.06);
+  border-color: rgba(251,191,36,0.15);
+  color: var(--text2);
+}
+
+.section-divider {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+  margin-top: 6px;
+}
+.section-divider .hint {
+  font-weight: 400;
+  color: var(--text3);
+  font-size: 11px;
+  margin-left: 6px;
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <h1 id="title"></h1>
+    <div class="subtitle" id="meta"></div>
+    <div class="stats-row" id="stats"></div>
+  </div>
+
+  <!-- Info panel -->
+  <div class="info-panel">
+    <div class="glass info-card">
+      <div class="section-title">Как работает</div>
+      <ul>
+        <li>Граф строится из <code>data/graph.json</code> — узлы (process, gate, decision, loop) и рёбра</li>
+        <li>4 исполнителя, каждый своим цветом: <code>Claude Code</code>, <code>Codex</code>, <code>User</code>, <code>Skills</code></li>
+        <li>5 hard gates блокируют переход при FAIL</li>
+        <li>Project-specific слой в <code>extensions/&lt;project&gt;/</code></li>
+      </ul>
+      <span class="info-sub">Навигация</span>
+      <p>Клик по узлу → детали и gate-условия в боковой панели. Фильтры по исполнителю, фазе, gates.</p>
+    </div>
+    <div class="glass info-card">
+      <div class="section-title">Настройка</div>
+      <ol>
+        <li>Скопировать <code>docs/decision-tree/</code> в целевой проект</li>
+        <li>Заполнить <code>config.json</code> путями и SoT-файлы</li>
+        <li>Запустить <code>sync.sh</code> и <code>sync-inline.sh</code></li>
+        <li>Открыть <code>index.html</code></li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- Expandable sections -->
+  <div class="expand-sections" id="expandSections"></div>
+
+  <!-- Filters -->
+  <div class="filters-bar" id="filters"></div>
+
+  <!-- Main: Graph + Detail -->
+  <div class="main-area">
+    <div class="glass graph-container">
+      <svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+    <div class="glass detail-panel" id="detail">
+      <h2>Выберите узел</h2>
+      <p>Кликните по узлу на диаграмме для просмотра деталей.</p>
+    </div>
+  </div>
+
+  <!-- Bottom tabs -->
+  <div style="font-size:11px;color:var(--text3);margin-bottom:6px;padding-left:4px;opacity:0.7">▼ Нажмите на вкладку для раскрытия</div>
+  <div class="bottom-tabs" id="btabs"></div>
+  <div id="p-commands" class="glass tab-panel"></div>
+  <div id="p-artifacts" class="glass tab-panel"></div>
+  <div id="p-gates" class="glass tab-panel"></div>
+  <div id="p-prompts" class="glass tab-panel"></div>
+  <div id="p-stats" class="glass tab-panel"></div>
+
+  <div class="footer" id="footer-sources"></div>
+</div>
+
+<!-- Inline data fallback for file:// -->
+<script id="data-config" type="application/json">{"project_name":"Decision Tree Baseline v1.0.0","source_of_truth":["project process docs","architecture docs","review log"],"portability":{"profile":"universal","features":{"enable_tenant_gate":false,"enable_plugins_gate":true,"enable_review_blocker":true},"workspace_paths":{"review_log":"REVIEW_LOG.md","functions_registry":"docs/FUNCTIONS_REGISTRY.md","schema":"schema.prisma","api_modules":"apps/api/src/modules","test_root":"apps/api/src","commands_path":".claude/commands","web_features":"apps/web/src/features"}},"skills_path":".agent/skills/skills","skills_repo":"https://github.com/sickn33/antigravity-awesome-skills","skills_version":"5.4.0","agents":{"implementer":"Claude Code","reviewer":"Codex"},"checks_profiles":["STD-API","STD-WEB","CUSTOM"],"review_statuses":["IN_REVIEW","CHANGES_REQUESTED","APPROVED","BLOCKED"],"risk_levels":["P1","P2","P3"],"plugins":{"baseline":["typescript-lsp","security-guidance","claude-md-management","hookify","code-review"],"priority_1":["context7","playwright","pr-review-toolkit"],"priority_2":["feature-dev","commit-commands","code-simplifier"],"optional":["frontend-design","claude-code-setup"],"prerequisites":["gh auth login","npm i -g typescript-language-server typescript"],"plugin_gate_command":"bash docs/decision-tree/scripts/check-prereqs.sh --strict"},"workflow_templates":{"source_path":"${WORKFLOWS_SOURCE_PATH}","bundled_path":"docs/decision-tree/workflows","count":5}}</script>
+<script id="data-actors" type="application/json">{"actors":[{"id":"claude","name":"Claude Code","role":"Реализация кода, test gate, handoff, docs-sync","color":"#818cf8","capabilities":["code","test","handoff","docs-sync","slash-commands"]},{"id":"codex","name":"Codex","role":"Архитектура, ревью, verdict (APPROVED / CHANGES_REQUESTED)","color":"#34d399","capabilities":["review","architecture","verdict","findings"]},{"id":"user","name":"Пользователь","role":"Триггер задач, /clear, /compact, model selection, принятие решений","color":"#fbbf24","capabilities":["trigger","decision","commands","approve"]},{"id":"skills","name":"Antigravity Skills","role":"852 skills, drift-check, 6 core + 6 workflow-level","color":"#f472b6","capabilities":["knowledge","patterns","drift-check","baseline"]}]}</script>
+<script id="data-gates" type="application/json">{"gates":[{"id":"plugin-gate","name":"Plugins Gate","type":"hard","trigger":"Перед началом реализации и ревью","condition":"Установлен baseline plugins и выполнен check-prereqs --strict","pass":"Переход к Planning Gate","fail":"Остановить цикл. Устранить missing prerequisites/plugins.","source_file":"project process docs","source_section":"tooling readiness"},{"id":"planning-gate","name":"Planning Gate","type":"hard","trigger":"Перед каждой задачей, до SKILLS PLAN","condition":"Skills version проверена, plugin status OK, pre_task_check зафиксирован","pass":"Переход к SKILLS PLAN","fail":"Обновить skills/плагины, выполнить pre_task_check до начала реализации","source_file":"project process docs","source_section":"planning policy"},{"id":"skills-gate","name":"Skills Gate","type":"hard","trigger":"Перед анализом и изменениями","condition":"SKILLS PLAN содержит selected_skills, order, why_each","pass":"Переход к реализации","fail":"Остановить цикл и уточнить план навыков","source_file":"project process docs","source_section":"skills policy"},{"id":"test-gate","name":"Test Gate","type":"hard","trigger":"После реализации и до REVIEW_HANDOFF","condition":"checks_profile выполнен, TEST_REPORT сформирован, result=PASS","pass":"Переход к handoff/review","fail":"Статус BLOCKED с причиной, командой воспроизведения и планом","source_file":"project process docs","source_section":"testing policy"},{"id":"architecture-gate","name":"Architecture Gate","type":"hard","trigger":"После генерации архитектурных артефактов","condition":"Архитектурный артефакт синхронизирован с source schema/spec","pass":"Commit разрешён","fail":"Статус BLOCKED до устранения расхождений","source_file":"project process docs","source_section":"architecture sync"},{"id":"review-blocker","name":"Review Blocker","type":"hard","trigger":"Перед выбором следующей задачи","condition":"Нет открытых записей IN_REVIEW/CHANGES_REQUESTED/BLOCKED","pass":"Разрешено брать следующую задачу","fail":"Закрыть текущие ревью до APPROVED","source_file":"project process docs","source_section":"review workflow"}]}</script>
+<script id="data-commands" type="application/json">{"commands":[{"name":"/status","file":".claude/commands/status.md","description":"Текущее состояние проекта по фазам MVP + блокеры + следующая задача","steps":["Собери данные: git branch/log, ls modules/features/packages, прочитай CLAUDE.md + FUNCTIONS_REGISTRY + REVIEW_LOG","Определи статусы 10 фаз MVP (done/wip/todo) по filesystem + реестру","Проверь блокеры (HARD GATE): если есть записи != APPROVED → BLOCKED","Определи следующую задачу: первая фаза wip/todo по номеру","Выведи отчёт: фазы, backend модули, frontend, открытые ревью, рекомендация модели"],"inputs":["CLAUDE.md","docs/FUNCTIONS_REGISTRY.md","docs/REVIEW_LOG.md","filesystem"],"outputs":["Status report","Next task recommendation","Model suggestion (Sonnet/Opus)"],"has_gate":true,"gate_id":"review-blocker"},{"name":"/progress","file":".claude/commands/progress.md","description":"Обновление визуального dashboard прогресса MVP (docs/progress.html)","steps":["Собери данные: CLAUDE.md (фазы), FUNCTIONS_REGISTRY (таблица функций + changelog), filesystem","Определи статусы: done (fs + реестр), wip (частично), todo (нет модуля)","Обнови JSON в HTML: <script type='application/json' id='progress-data'>","НЕ трогай HTML/CSS/JS шаблон — только JSON-блок","Выдай отчёт: фазы X/10, модули backend A/B, функции C/D"],"inputs":["CLAUDE.md","docs/FUNCTIONS_REGISTRY.md","filesystem"],"outputs":["docs/progress.html (JSON update)"],"has_gate":false,"gate_id":null},{"name":"/architecture","file":".claude/commands/architecture.md","description":"Обновление визуального превью архитектуры (preview_architecture.html) + HARD GATE валидация","steps":["Собери данные: schema.prisma, Architecture.MD, CLAUDE.md, FUNCTIONS_REGISTRY, filesystem","Обнови JSON в HTML: <script type='application/json' id='arch-data'>","Заполни db_tables строго 1:1 с Prisma (каждое поле отдельно, FK типы из schema)","НЕ трогай HTML/CSS/JS шаблон — только JSON-блок","HARD GATE валидация: schema_tables == preview_tables, missing=[], extra=[], combined=0, uuid_fk=0","Выдай отчёт: таблиц N, endpoints M, модулей X/Y/Z, GATE STATUS: PASS/BLOCKED"],"inputs":["apps/api/prisma/schema.prisma","Architecture.MD","CLAUDE.md","docs/FUNCTIONS_REGISTRY.md","filesystem"],"outputs":["preview_architecture.html (JSON update)","HARD GATE validation report"],"has_gate":true,"gate_id":"architecture-gate"},{"name":"/reviewcode","file":".claude/commands/reviewcode.md","description":"Код-ревью текущих изменений + REVIEW_HANDOFF для Codex","steps":["Определи scope: branch (default vs main), staged, last, commit:<sha>","Собери контекст: прочитай затронутые файлы целиком, определи scope/contracts/migrations","Проведи ревью по 7-категорийному чеклисту (Code Quality, Architecture, RBAC+Security, Audit, Testing, Conventions, Production Readiness)","Категоризируй находки: P1 Critical (must fix), P2 Important (should fix), P3 Minor (nice to have)","Вынеси вердикт: Да / Нет / После исправлений + статистика","Сформируй REVIEW_HANDOFF блок (review_id, commit, changed_files, checks_profile, risks)","Опционально: обнови docs/REVIEW_LOG.md со статусом IN_REVIEW"],"inputs":["Git diff/log/status","CLAUDE.md","Architecture.MD","schema.prisma (если миграции)"],"outputs":["P1/P2/P3 findings report","REVIEW_HANDOFF block","REVIEW_LOG entry (optional)"],"has_gate":false,"gate_id":null,"variants":{"default":"git diff main..HEAD (вся ветка vs main)","staged":"git diff --cached (только staged)","last":"git diff HEAD~1..HEAD (последний коммит)","commit":"git show <sha> (конкретный коммит)"}}]}</script>
+<script id="data-artifacts" type="application/json">{"artifacts":[{"id":"workspace-arch-doc","name":"WORKSPACE_ARCH_DOC","path":"<set in your project>","role":"workspace_placeholder","description":"Архитектурный source-of-truth проекта (например Architecture.md)","priority":1},{"id":"workspace-review-log","name":"WORKSPACE_REVIEW_LOG","path":"<set in portability.workspace_paths.review_log>","role":"workspace_placeholder","description":"Журнал ревью для review loop и blocker gate","priority":2},{"id":"workspace-schema","name":"WORKSPACE_SCHEMA","path":"<set in portability.workspace_paths.schema>","role":"workspace_placeholder","description":"Schema/source model для architecture/test метрик","priority":3},{"id":"workspace-api-modules","name":"WORKSPACE_API_MODULES","path":"<set in portability.workspace_paths.api_modules>","role":"workspace_placeholder","description":"Каталог backend модулей","priority":4},{"id":"workspace-web-features","name":"WORKSPACE_WEB_FEATURES","path":"<set in portability.workspace_paths.web_features>","role":"workspace_placeholder","description":"Каталог frontend features","priority":5},{"id":"workspace-commands","name":"WORKSPACE_COMMANDS","path":"<set in portability.workspace_paths.commands_path>","role":"workspace_placeholder","description":"Каталог command docs/scripts","priority":6},{"id":"dt-index","name":"index.html","path":"docs/decision-tree/index.html","role":"package_core","description":"Self-contained визуализация decision-tree с inline fallback"},{"id":"dt-config","name":"config.json","path":"docs/decision-tree/data/config.json","role":"package_data","description":"Портируемая baseline-конфигурация и workspace path mapping"},{"id":"dt-graph","name":"graph.json","path":"docs/decision-tree/data/graph.json","role":"package_data","description":"Граф процесса: gates, review loop, команды"},{"id":"dt-gates","name":"gates.json","path":"docs/decision-tree/data/gates.json","role":"package_data","description":"Universal hard gates без project-specific правил"},{"id":"dt-artifacts","name":"artifacts.json","path":"docs/decision-tree/data/artifacts.json","role":"package_data","description":"Список package артефактов + workspace placeholders"},{"id":"dt-stats","name":"stats.json","path":"docs/decision-tree/data/stats.json","role":"package_data","description":"Сгенерированные метрики workspace"},{"id":"dt-sync","name":"sync.sh","path":"docs/decision-tree/scripts/sync.sh","role":"package_script","description":"Config-driven сбор метрик (graceful fallback)"},{"id":"dt-sync-inline","name":"sync-inline.sh","path":"docs/decision-tree/scripts/sync-inline.sh","role":"package_script","description":"Синхронизация inline fallback в index.html из data/*.json"},{"id":"dt-bootstrap","name":"bootstrap.sh","path":"docs/decision-tree/scripts/bootstrap.sh","role":"package_script","description":"Быстрая установка baseline в новом workspace"},{"id":"dt-prereqs","name":"check-prereqs.sh","path":"docs/decision-tree/scripts/check-prereqs.sh","role":"package_script","description":"Проверка prerequisites/plugins"},{"id":"dt-template-prompts","name":"prompts.md","path":"docs/decision-tree/templates/prompts.md","role":"template","description":"Шаблоны SKILLS PLAN, REVIEW_HANDOFF, TEST_REPORT"},{"id":"dt-template-checklist","name":"review-checklist.md","path":"docs/decision-tree/templates/review-checklist.md","role":"template","description":"Универсальный чеклист архитектурного ревью"},{"id":"dt-template-plugin-policy","name":"claude-md-plugin-policy.md","path":"docs/decision-tree/templates/claude-md-plugin-policy.md","role":"template","description":"Шаблон plugin policy для проектного process doc"},{"id":"dt-workflows-dir","name":"workflows/","path":"docs/decision-tree/workflows/","role":"workflow_templates","description":"Набор workflow-шаблонов для preflight/test/retest"},{"id":"dt-extension-dir","name":"extensions/<project>/","path":"docs/decision-tree/extensions/<project>/","role":"project_extension","description":"Опциональный слой project-specific правил и артефактов"}]}</script>
+<script id="data-stats" type="application/json">{"generated":"2026-02-23T14:19:52Z","profile":"universal","branch":"main","last_commit":"unknown","reviews_total":0,"reviews_approved":0,"reviews_open":0,"prisma_tables":0,"backend_modules":0,"test_spec_files":0,"skills_available":0,"skills_version":"unknown","commands_count":0,"frontend_features":0}</script>
+<script id="data-graph" type="application/json">{"nodes":[{"id":"task-received","type":"start","label":"Задача получена","actor":"user","category":"process","description":"Пользователь формулирует задачу и ожидаемый результат.","source_ref":"project process docs","tags":["trigger"]},{"id":"model-selection","type":"decision","label":"Выбор модели","actor":"user","category":"process","description":"Выбор модели под объём и риск задачи.","source_ref":"project process docs","tags":["model"]},{"id":"plugins-baseline","type":"process","label":"Plugins baseline","actor":"claude","category":"plugins","description":"Проверка baseline и optional plugins по политике проекта.","source_ref":"project process docs","tags":["plugins"]},{"id":"plugin-gate","type":"gate","label":"Plugins Gate","actor":"claude","category":"plugins","description":"Hard gate: prerequisites и baseline plugins должны быть валидны.","source_ref":"project process docs","tags":["gate","hard"]},{"id":"planning-gate","type":"gate","label":"Planning Gate","actor":"claude","category":"planning","description":"Hard gate: skills version проверена, plugin status OK, pre_task_check зафиксирован — перед SKILLS PLAN.","source_ref":"project process docs","tags":["gate","hard","planning"]},{"id":"skills-plan","type":"process","label":"SKILLS PLAN","actor":"claude","category":"skills","description":"Формирование selected_skills, order и why_each перед реализацией.","source_ref":"project process docs","tags":["skills"]},{"id":"skills-gate","type":"gate","label":"Skills Gate","actor":"claude","category":"skills","description":"Hard gate: без плана навыков изменения не начинаются.","source_ref":"project process docs","tags":["gate","hard"]},{"id":"read-sot","type":"process","label":"Чтение Source of Truth","actor":"claude","category":"architecture","description":"Перед реализацией сверить архитектурные и процессные документы проекта.","source_ref":"architecture docs","tags":["architecture"]},{"id":"implementation","type":"process","label":"Реализация","actor":"claude","category":"process","description":"Реализация изменений по согласованному scope.","source_ref":"project process docs","tags":["code"]},{"id":"commit-rules","type":"process","label":"Правила коммитов","actor":"claude","category":"commits","description":"Логические небольшие коммиты, без смешивания несвязанных изменений.","source_ref":"project process docs","tags":["commit"]},{"id":"select-checks","type":"decision","label":"Выбор checks_profile","actor":"claude","category":"tests","description":"Выбор STD-API/STD-WEB/CUSTOM под scope изменений.","source_ref":"project process docs","tags":["tests"]},{"id":"run-tests","type":"process","label":"Выполнение тестов","actor":"claude","category":"tests","description":"Запуск команд из checks_profile и фиксация результатов.","source_ref":"project process docs","tags":["tests"]},{"id":"test-gate","type":"gate","label":"Test Gate","actor":"claude","category":"tests","description":"Hard gate: PASS обязателен перед handoff.","source_ref":"project process docs","tags":["gate","hard"]},{"id":"test-blocked","type":"end","label":"BLOCKED","actor":"claude","category":"tests","description":"FAIL: зафиксировать причину, команду воспроизведения и план разблокировки.","source_ref":"project process docs","tags":["blocked"]},{"id":"test-report","type":"process","label":"TEST_REPORT","actor":"claude","category":"tests","description":"Сформировать TEST_REPORT с commands_run, result и residual_risks.","source_ref":"project process docs","tags":["report"]},{"id":"cmd-reviewcode","type":"process","label":"/reviewcode","actor":"claude","category":"commands","description":"Опциональный запуск системного review перед handoff.","source_ref":"project command docs","tags":["command"]},{"id":"review-handoff","type":"process","label":"REVIEW_HANDOFF","actor":"claude","category":"process","description":"Сформировать handoff с scope, changed_files, checks_profile и рисками.","source_ref":"project process docs","tags":["handoff"]},{"id":"review-log-update","type":"process","label":"Обновить REVIEW_LOG","actor":"claude","category":"docs","description":"Создать/обновить запись ревью со статусом IN_REVIEW.","source_ref":"review workflow docs","tags":["docs","review"]},{"id":"codex-review","type":"process","label":"Codex ревью","actor":"codex","category":"process","description":"Архитектурное ревью: риски, регрессии, соответствие требованиям.","source_ref":"review workflow docs","tags":["review"]},{"id":"codex-verdict","type":"decision","label":"Verdict","actor":"codex","category":"process","description":"APPROVED или CHANGES_REQUESTED.","source_ref":"review workflow docs","tags":["review","decision"]},{"id":"changes-requested","type":"process","label":"CHANGES_REQUESTED","actor":"codex","category":"process","description":"Фиксация P1/P2/P3 findings и обновление статуса.","source_ref":"review workflow docs","tags":["findings"]},{"id":"claude-fixes","type":"process","label":"Исправления","actor":"claude","category":"process","description":"Исправления в том же review_id и повторный перевод в IN_REVIEW.","source_ref":"review workflow docs","tags":["loop"]},{"id":"review-loop","type":"loop","label":"Review loop","actor":"claude","category":"process","description":"Цикл до закрытия всех критичных и важных замечаний.","source_ref":"review workflow docs","tags":["loop"]},{"id":"approved","type":"end","label":"APPROVED","actor":"codex","category":"process","description":"Ревью закрыто. Можно завершать задачу и синхронизировать документы.","source_ref":"review workflow docs","tags":["approved"]},{"id":"registry-sync","type":"process","label":"Docs sync","actor":"claude","category":"docs","description":"Синхронизация реестров и журналов после финального вердикта.","source_ref":"project process docs","tags":["docs"]},{"id":"cmd-architecture","type":"process","label":"/architecture","actor":"claude","category":"commands","description":"Опциональное обновление архитектурного превью по текущим данным.","source_ref":"project command docs","tags":["command"]},{"id":"architecture-gate","type":"gate","label":"Architecture Gate","actor":"claude","category":"commands","description":"Hard gate: архитектурный артефакт согласован с source schema/spec.","source_ref":"project process docs","tags":["gate","hard"]},{"id":"arch-blocked","type":"end","label":"ARCH BLOCKED","actor":"claude","category":"commands","description":"Расхождения в архитектурных артефактах требуют исправления.","source_ref":"project process docs","tags":["blocked"]},{"id":"cmd-status","type":"process","label":"/status","actor":"claude","category":"commands","description":"Проверка открытых ревью перед выбором новой задачи.","source_ref":"project command docs","tags":["command"]},{"id":"review-blocker","type":"gate","label":"Review Blocker","actor":"claude","category":"process","description":"Hard gate: нельзя брать новую задачу с открытыми ревью.","source_ref":"review workflow docs","tags":["gate","hard"]},{"id":"next-task","type":"end","label":"Следующая задача","actor":"user","category":"process","description":"Старт следующего цикла после закрытия блокеров.","source_ref":"project process docs","tags":["next"]}],"edges":[{"from":"task-received","to":"model-selection","label":"","type":"flow"},{"from":"model-selection","to":"plugins-baseline","label":"","type":"flow"},{"from":"plugins-baseline","to":"plugin-gate","label":"","type":"flow"},{"from":"plugin-gate","to":"planning-gate","label":"PASS","type":"pass"},{"from":"plugin-gate","to":"task-received","label":"FAIL","type":"fail"},{"from":"planning-gate","to":"skills-plan","label":"PASS","type":"pass"},{"from":"planning-gate","to":"plugins-baseline","label":"FAIL","type":"fail"},{"from":"skills-plan","to":"skills-gate","label":"","type":"flow"},{"from":"skills-gate","to":"read-sot","label":"PASS","type":"pass"},{"from":"skills-gate","to":"skills-plan","label":"FAIL","type":"fail"},{"from":"read-sot","to":"implementation","label":"","type":"flow"},{"from":"implementation","to":"commit-rules","label":"","type":"flow"},{"from":"commit-rules","to":"select-checks","label":"","type":"flow"},{"from":"select-checks","to":"run-tests","label":"","type":"flow"},{"from":"run-tests","to":"test-gate","label":"","type":"flow"},{"from":"test-gate","to":"test-report","label":"PASS","type":"pass"},{"from":"test-gate","to":"test-blocked","label":"FAIL","type":"fail"},{"from":"test-report","to":"cmd-reviewcode","label":"optional","type":"optional"},{"from":"test-report","to":"review-handoff","label":"","type":"flow"},{"from":"cmd-reviewcode","to":"review-handoff","label":"","type":"flow"},{"from":"review-handoff","to":"review-log-update","label":"","type":"flow"},{"from":"review-log-update","to":"codex-review","label":"IN_REVIEW","type":"flow"},{"from":"codex-review","to":"codex-verdict","label":"","type":"flow"},{"from":"codex-verdict","to":"approved","label":"APPROVED","type":"pass"},{"from":"codex-verdict","to":"changes-requested","label":"CHANGES_REQUESTED","type":"fail"},{"from":"changes-requested","to":"claude-fixes","label":"","type":"flow"},{"from":"claude-fixes","to":"review-loop","label":"","type":"flow"},{"from":"review-loop","to":"codex-review","label":"тот же review_id","type":"loop"},{"from":"approved","to":"registry-sync","label":"","type":"flow"},{"from":"registry-sync","to":"cmd-architecture","label":"optional","type":"optional"},{"from":"cmd-architecture","to":"architecture-gate","label":"","type":"flow"},{"from":"architecture-gate","to":"cmd-status","label":"PASS","type":"pass"},{"from":"architecture-gate","to":"arch-blocked","label":"FAIL","type":"fail"},{"from":"registry-sync","to":"cmd-status","label":"","type":"flow"},{"from":"cmd-status","to":"review-blocker","label":"","type":"flow"},{"from":"review-blocker","to":"next-task","label":"PASS","type":"pass"},{"from":"review-blocker","to":"review-log-update","label":"FAIL: закрыть open review","type":"fail"}]}</script>
+
+<script>
+(async () => {
+const base = document.baseURI.replace(/[^/]*$/, '');
+const load = async f => {
+  try { const r = await fetch(base + 'data/' + f); if (r.ok) return r.json(); } catch(e) {}
+  const inline = document.getElementById('data-' + f.replace('.json', ''));
+  if (inline) { try { return JSON.parse(inline.textContent); } catch(e) {} }
+  return null;
+};
+
+const [CFG, G, ACT, GAT, CMD, ART, ST] = await Promise.all(
+  ['config.json','graph.json','actors.json','gates.json','commands.json','artifacts.json','stats.json'].map(load)
+);
+if (!G || !G.nodes) { document.getElementById('title').textContent = 'Error: graph.json not loaded'; return; }
+
+const $ = id => document.getElementById(id);
+const h = s => String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const actorMap = {}; if (ACT) ACT.actors.forEach(a => actorMap[a.id] = a);
+const gateMap = {}; if (GAT) GAT.gates.forEach(g => gateMap[g.id] = g);
+
+// ── Header ──
+$('title').textContent = (CFG ? CFG.project_name : 'Project') + ' — Decision Tree';
+$('meta').innerHTML = 'Исполнители: ' + Object.values(actorMap).map(a =>
+  `<span style="color:${a.color};font-weight:700">${a.name}</span>`
+).join(' · ');
+
+const sourceList = (CFG && Array.isArray(CFG.source_of_truth) && CFG.source_of_truth.length)
+  ? CFG.source_of_truth.join(' + ') : 'not configured';
+if ($('footer-sources')) $('footer-sources').textContent = 'Decision Tree · Liquid Glass · Источники: ' + sourceList;
+
+$('stats').innerHTML = `<p style="font-size:12px;color:var(--text2);line-height:1.6;margin:0">Self-contained пакет для визуализации процесса разработки и review loop. Standalone HTML без внешних зависимостей — рендерит SVG-граф из JSON-данных. Universal baseline: подключается в любой проект без изменения core-данных.</p>`;
+
+// ── Expandable sections ──
+{
+  const sections = [];
+
+  // Hard Gates section
+  if (GAT) {
+    let content = `<p style="font-size:12px;color:var(--text2);margin-bottom:14px">Обязательные контрольные точки. При FAIL цикл останавливается.</p>`;
+    content += `<table><tr><th>Gate</th><th>Когда</th><th>Что проверяется</th><th>PASS</th><th>FAIL</th></tr>`;
+    GAT.gates.forEach(g => {
+      content += `<tr><td style="white-space:nowrap"><span class="badge b-hard">STOP</span> <b>${h(g.name)}</b></td>`;
+      content += `<td style="color:var(--text3)">${h(g.trigger)}</td>`;
+      content += `<td><span class="src-tag">${h(g.condition)}</span></td>`;
+      content += `<td style="color:var(--green)">${h(g.pass)}</td>`;
+      content += `<td style="color:var(--red)">${h(g.fail)}</td></tr>`;
+    });
+    content += `</table>`;
+    sections.push({ title: `<span class="dot" style="background:var(--red)"></span>Hard Gates — ${GAT.gates.length} блокирующих точек`, content, color: 'var(--red)' });
+  }
+
+  // Engineering Playbook
+  {
+    let content = `<p style="font-size:12px;color:var(--text2);margin-bottom:16px">Стандартные форматы и правила для каждого ключевого события рабочего цикла.</p>`;
+
+    // Plugins
+    content += `<div class="section-divider">Plugins — инструментарий агента<span class="hint">/ есть ли у агента нужные инструменты?</span></div>`;
+    content += `<p style="font-size:11px;color:var(--text3);margin-bottom:10px">Плагины расширяют возможности Claude Code. Два слоя: <b style="color:var(--text2)">baseline</b> — обязательные; <b style="color:var(--text2)">optional</b> — под сценарий.</p>`;
+
+    if (CFG && CFG.plugins) {
+      const pd = {'typescript-lsp':'TypeScript language server — автодополнение, типы, ошибки в реальном времени','security-guidance':'Рекомендации по безопасности при написании кода','claude-md-management':'Управление CLAUDE.md — синхронизация процессных правил проекта','hookify':'Автоматизация через git hooks и события Claude Code','code-review':'Встроенное code review, интеграция с gh для PR flow'};
+      const p1d = {'context7':'Актуальная документация библиотек и API — перед внедрением незнакомых зависимостей','playwright':'UI smoke / e2e тесты в браузере (auth flow, формы, загрузки)','pr-review-toolkit':'Углублённый PR review — не запускать одновременно с code-review'};
+      const p2d = {'feature-dev':'Крупные фичи с фазами Discovery → Design → Implementation','commit-commands':'Ускорение git-процесса после ручной проверки changed_files','code-simplifier':'Безопасный рефакторинг и снижение цикломатической сложности'};
+      const od = {'frontend-design':'UI-эксперименты без нарушения правил общего UI-kit','claude-code-setup':'Периодический аудит проекта и настройка automation/hooks'};
+
+      content += `<div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:6px">Baseline — обязательные, project scope:</div>`;
+      content += `<table style="margin-bottom:6px"><tr><th>Plugin</th><th>Назначение</th><th>Установка</th></tr>`;
+      (CFG.plugins.baseline||[]).forEach(p => {
+        content += `<tr><td><span class="src-tag">${h(p)}</span></td><td style="color:var(--text3)">${pd[p]||''}</td><td style="font-family:monospace;font-size:10px;color:var(--cyan)">claude plugin install ${h(p)}@claude-plugins-official --scope project</td></tr>`;
+      });
+      content += `</table>`;
+      content += `<p style="font-size:10px;color:var(--text3);margin-bottom:12px">Проверить статус: <span class="src-tag">bash docs/decision-tree/scripts/check-prereqs.sh --strict</span></p>`;
+
+      if ((CFG.plugins.priority_1||[]).length) {
+        content += `<div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:6px">Priority 1 — высокоприоритетные по сценарию:</div>`;
+        content += `<table style="margin-bottom:10px"><tr><th>Plugin</th><th>Когда использовать</th></tr>`;
+        (CFG.plugins.priority_1).forEach(p => { content += `<tr><td><span class="src-tag">${h(p)}</span></td><td style="color:var(--text3)">${p1d[p]||''}</td></tr>`; });
+        content += `</table>`;
+      }
+      if ((CFG.plugins.priority_2||[]).length) {
+        content += `<div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:6px">Priority 2 — среднеприоритетные по сценарию:</div>`;
+        content += `<table style="margin-bottom:10px"><tr><th>Plugin</th><th>Когда использовать</th></tr>`;
+        (CFG.plugins.priority_2).forEach(p => { content += `<tr><td><span class="src-tag">${h(p)}</span></td><td style="color:var(--text3)">${p2d[p]||''}</td></tr>`; });
+        content += `</table>`;
+      }
+      content += `<div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:6px">Optional — ситуативные:</div>`;
+      content += `<table style="margin-bottom:10px"><tr><th>Plugin</th><th>Когда использовать</th></tr>`;
+      (CFG.plugins.optional||[]).forEach(p => { content += `<tr><td><span class="src-tag">${h(p)}</span></td><td style="color:var(--text3)">${od[p]||''}</td></tr>`; });
+      content += `</table>`;
+    }
+
+    content += `<div class="callout callout-info" style="margin-top:12px"><b style="color:var(--text)">Plugins vs Skills — нет конфликтов.</b> Plugins — инструменты CLI (<span class="src-tag">@claude-plugins-official</span>, scope проекта); Skills — экспертиза агента (<span class="src-tag">.agent/skills/</span>). Разные источники, разные директории, разные gates. Активируются последовательно: Plugin Gate → SKILLS PLAN.</div>`;
+    content += `<p style="font-size:11px;color:var(--text3);margin:8px 0">Перед стартом запускается <span class="src-tag">check-prereqs.sh --strict</span> — проверяет node/npm/git/gh/claude и baseline plugins. Результат фиксируется в блоке <b style="color:var(--text2)">PLUGIN_CHECK</b>.</p>`;
+
+    // Skills
+    content += `<div class="section-divider" style="margin-top:16px">Skills — экспертиза агента<span class="hint">/ правильно ли агент думает?</span></div>`;
+    content += `<p style="font-size:11px;color:var(--text3);margin-bottom:10px"><b style="color:var(--text2)">Antigravity Awesome Skills</b> — 946 проверенных навыков. SKILLS PLAN обязателен перед реализацией.</p>`;
+    content += `<table><tr><th>Категория</th><th>Фокус</th><th>Примеры</th></tr>`;
+    [['Архитектура','Системный дизайн, ADR, C4, масштабируемые паттерны','architecture, c4-context, senior-architect'],
+     ['Бизнес','Рост, ценообразование, CRO, SEO, GTM','copywriting, pricing-strategy, seo-audit'],
+     ['Data & AI','LLM-приложения, RAG, агенты, наблюдаемость, аналитика','rag-engineer, prompt-engineer, langgraph'],
+     ['Development','Языковая экспертиза, фреймворки, качество кода','typescript-expert, python-patterns, react-patterns'],
+     ['General','Планирование, документы, продуктовые процессы, письмо','brainstorming, doc-coauthoring, writing-plans'],
+     ['Infrastructure','DevOps, облака, serverless, деплой, CI/CD','docker-expert, aws-serverless, vercel-deployment'],
+     ['Security','AppSec, пентест, анализ уязвимостей, комплаенс','api-security-best-practices, sql-injection-testing'],
+     ['Testing','TDD, дизайн тестов, фиксы, QA-потоки','test-driven-development, testing-patterns, test-fixing'],
+     ['Workflow','Автоматизация, оркестрация, джобы, агенты','workflow-automation, inngest, trigger-dev']
+    ].forEach(([cat,focus,ex]) => {
+      content += `<tr><td style="font-weight:700">${cat}</td><td style="color:var(--text3)">${focus}</td><td><span class="src-tag">${ex}</span></td></tr>`;
+    });
+    content += `</table>`;
+
+    // Model Selection
+    content += `<div class="section-divider" style="margin-top:16px">Выбор модели<span class="hint">/ под объём и риск задачи</span></div>`;
+    content += `<table><tr><th>Модель</th><th>Когда</th><th>Примеры</th></tr>`;
+    content += `<tr><td style="font-weight:700"><span class="src-tag">claude-opus-4-6</span></td><td style="color:var(--text3)">Архитектурные решения, сложный debugging</td><td style="color:var(--cyan)">Проектирование схемы БД, root-cause</td></tr>`;
+    content += `<tr><td style="font-weight:700"><span class="src-tag">claude-sonnet-4-6</span></td><td style="color:var(--text3)">Стандартная реализация, фиксы, docs</td><td style="color:var(--cyan)">CRUD-модуль, обновление тестов</td></tr></table>`;
+
+    // Playbook Components
+    content += `<div class="section-divider" style="margin-top:16px">Компоненты</div>`;
+    [['Review Handoff','Единый шаблон передачи: что сделано, где изменения, какие риски.'],
+     ['Test Report','Сводка проверок: что запускалось, результат, покрытие.'],
+     ['Known Risks','Реестр рисков P1–P3 с привязкой к задачам.'],
+     ['Skill Trace','Фиксация экспертизы в работе.'],
+     ['Push Discipline','3+ коммита ahead → напомнить про push. Один коммит = одно изменение.']
+    ].forEach(([name,desc]) => {
+      content += `<div class="playbook-card"><div class="card-title">${name}</div><div class="card-desc">${desc}</div></div>`;
+    });
+
+    sections.push({ title: '<span class="dot" style="background:var(--accent)"></span>Engineering Playbook', content, color: 'var(--accent)' });
+  }
+
+  // Render expandable sections
+  const container = $('expandSections');
+  sections.forEach((sec, i) => {
+    const card = document.createElement('div');
+    card.className = 'glass expand-card';
+    card.innerHTML = `
+      <div class="expand-header" data-idx="${i}">
+        <div class="expand-title" style="color:${sec.color}">${sec.title}</div>
+        <div class="expand-icon">▶</div>
+      </div>
+      <div class="expand-body"><div class="expand-content">${sec.content}</div></div>`;
+    card.querySelector('.expand-header').onclick = () => card.classList.toggle('open');
+    container.appendChild(card);
+  });
+}
+
+// ── Filters ──
+const phases = ['all','planning','implementation','tests','review','docs','commands','commits'];
+const actorIds = ['all', ...Object.keys(actorMap)];
+let curActor = 'all', curPhase = 'all', gatesOnly = false;
+
+// Mapping phase → categories (used by both filters and getVisible)
+const phaseCats = {planning:['process','skills','planning','plugins'],implementation:['process','architecture'],tests:['tests'],review:['process'],docs:['docs'],commands:['commands'],commits:['commits']};
+
+// Check if a phase has at least 1 node for the current actor
+function phaseHasNodes(phase) {
+  if (phase === 'all') return true;
+  const allowed = phaseCats[phase] || [];
+  return G.nodes.some(n => {
+    if (curActor !== 'all' && n.actor !== curActor) return false;
+    return allowed.includes(n.category);
+  });
+}
+
+// Check if an actor has at least 1 node for the current phase
+function actorHasNodes(actorId) {
+  if (actorId === 'all') return true;
+  return G.nodes.some(n => {
+    if (n.actor !== actorId) return false;
+    if (curPhase !== 'all') {
+      const allowed = phaseCats[curPhase] || [];
+      if (!allowed.includes(n.category)) return false;
+    }
+    return true;
+  });
+}
+
+function buildFilters() {
+  let html = '<span class="filter-label">Исполнители</span>';
+  actorIds.forEach(id => {
+    if (!actorHasNodes(id) && id !== 'all') return; // скрыть пустых исполнителей
+    const lbl = id === 'all' ? 'Все' : (actorMap[id] ? actorMap[id].name : id);
+    html += `<button class="filter-btn${curActor === id ? ' active' : ''}" data-a="${id}">${lbl}</button>`;
+  });
+  html += '<div class="filter-sep"></div><span class="filter-label">Фазы</span>';
+  const phLabels = {all:'Все',planning:'Planning',implementation:'Impl',tests:'Tests',review:'Review',docs:'Docs',commands:'Cmds',commits:'Commits'};
+  phases.forEach(p => {
+    if (!phaseHasNodes(p) && p !== 'all') return; // скрыть пустые фазы
+    html += `<button class="filter-btn${curPhase === p ? ' active' : ''}" data-p="${p}">${phLabels[p]||p}</button>`;
+  });
+  html += `<div class="filter-sep"></div>`;
+  // Скрыть Gates если при текущем фильтре нет gate-узлов
+  const hasGates = G.nodes.some(n => {
+    if (n.type !== 'gate') return false;
+    if (curActor !== 'all' && n.actor !== curActor) return false;
+    if (curPhase !== 'all') { const al = phaseCats[curPhase] || []; if (!al.includes(n.category)) return false; }
+    return true;
+  });
+  if (hasGates) html += `<button class="filter-btn${gatesOnly ? ' active' : ''}" data-g="1">Gates</button>`;
+  if (!hasGates && gatesOnly) gatesOnly = false; // сброс если gates исчезли
+  html += `<button class="filter-btn" data-r="1" style="color:var(--text3)">↻ Reset</button>`;
+  $('filters').innerHTML = html;
+  $('filters').querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
+    curActor = b.dataset.a;
+    // Если текущая фаза стала пустой при новом исполнителе — сбросить на "all"
+    if (curPhase !== 'all' && !phaseHasNodes(curPhase)) curPhase = 'all';
+    render();
+  });
+  $('filters').querySelectorAll('[data-p]').forEach(b => b.onclick = () => { curPhase = b.dataset.p; render(); });
+  const gBtn = $('filters').querySelector('[data-g]');
+  if (gBtn) gBtn.onclick = () => { gatesOnly = !gatesOnly; render(); };
+  $('filters').querySelector('[data-r]').onclick = () => { curActor='all'; curPhase='all'; gatesOnly=false; render(); };
+}
+
+// ══════════════════════════════════════════════
+// SVG Graph — Vertical Flowchart with Phases
+// ══════════════════════════════════════════════
+const NW = 170, NH = 48, GAP_X = 100, GAP_Y = 32, MARGIN = 50, LEFT_PAD = 40;
+
+// Вручную определённые строки (rows) вертикального flow.
+// Каждая строка: массив node-id. Основной поток — по центру, ответвления — по бокам.
+const flowRows = [
+  ['task-received'],
+  ['model-selection'],
+  ['plugins-baseline'],
+  ['plugin-gate'],
+  ['planning-gate'],
+  ['skills-plan'],
+  ['skills-gate'],
+  ['read-sot'],
+  ['implementation'],
+  ['commit-rules'],
+  ['select-checks'],
+  ['run-tests'],
+  ['test-gate', 'test-blocked'],
+  ['test-report', 'cmd-reviewcode'],
+  ['review-handoff'],
+  ['review-log-update'],
+  ['codex-review'],
+  ['codex-verdict'],
+  ['changes-requested', 'approved'],
+  ['claude-fixes', 'registry-sync'],
+  ['review-loop', 'cmd-architecture'],
+  [null, 'architecture-gate'],
+  [null, 'arch-blocked', 'cmd-status'],
+  [null, null, 'review-blocker'],
+  [null, null, 'next-task']
+];
+
+// Фазы: каждая фаза покрывает диапазон строк
+const phaseRanges = [
+  { name: 'Инициализация', rows: [0, 1], clr: 'rgba(251,191,36,0.04)', border: 'rgba(251,191,36,0.12)' },
+  { name: 'Подготовка', rows: [2, 6], clr: 'rgba(129,140,248,0.04)', border: 'rgba(129,140,248,0.12)' },
+  { name: 'Реализация', rows: [7, 9], clr: 'rgba(129,140,248,0.03)', border: 'rgba(129,140,248,0.08)' },
+  { name: 'Тестирование', rows: [10, 13], clr: 'rgba(52,211,153,0.04)', border: 'rgba(52,211,153,0.12)' },
+  { name: 'Review', rows: [14, 20], clr: 'rgba(244,114,182,0.04)', border: 'rgba(244,114,182,0.12)' },
+  { name: 'Завершение', rows: [21, 24], clr: 'rgba(34,211,238,0.04)', border: 'rgba(34,211,238,0.10)' }
+];
+
+function getVisible() {
+  return G.nodes.filter(n => {
+    if (gatesOnly && n.type !== 'gate') return false;
+    if (curActor !== 'all' && n.actor !== curActor) return false;
+    if (curPhase !== 'all') {
+      const allowed = phaseCats[curPhase] || [];
+      if (!allowed.includes(n.category)) return false;
+    }
+    return true;
+  });
+}
+
+function layout(nodes) {
+  const ids = new Set(nodes.map(n => n.id));
+  const pos = {};
+
+  // Определяем, какие строки flow будут видны
+  const visRows = [];
+  flowRows.forEach(row => {
+    const visibleInRow = row.map(id => (id && ids.has(id)) ? id : null);
+    if (visibleInRow.some(id => id !== null)) visRows.push(visibleInRow);
+  });
+
+  // Добавляем узлы, не вошедшие в flowRows
+  const placed = new Set();
+  visRows.forEach(row => row.forEach(id => { if (id) placed.add(id); }));
+  const extra = nodes.filter(n => !placed.has(n.id));
+  if (extra.length) visRows.push(extra.map(n => n.id));
+
+  // Вычисляем максимальную ширину строки (учитываем null-слоты + боковые подписи)
+  const maxCols = Math.max(...visRows.map(r => r.length), 1);
+  const totalW = LEFT_PAD + maxCols * NW + (maxCols - 1) * GAP_X + MARGIN * 2 + 160;
+
+  // Позиционируем каждую строку (со сдвигом LEFT_PAD для боковых подписей фаз)
+  let cy = MARGIN;
+  visRows.forEach(row => {
+    const items = [];
+    row.forEach((id, colIdx) => { if (id) items.push({ id, colHint: colIdx }); });
+    if (!items.length) return;
+    // Центрируем строку в зоне правее LEFT_PAD
+    const availW = totalW - LEFT_PAD;
+    const rowW = items.length * NW + (items.length - 1) * GAP_X;
+    let startX = LEFT_PAD + (availW - rowW) / 2;
+    // Но если есть null-слоты (ответвления), используем фиксированные колонки
+    if (row.length > 1 && row.some(id => id === null)) {
+      const colW = NW + GAP_X;
+      const rowFullW = row.length * colW - GAP_X;
+      startX = LEFT_PAD + (availW - rowFullW) / 2;
+      row.forEach((id, ci) => {
+        if (id && ids.has(id)) {
+          pos[id] = { x: startX + ci * colW, y: cy };
+        }
+      });
+    } else {
+      items.forEach((item, i) => {
+        pos[item.id] = { x: startX + i * (NW + GAP_X), y: cy };
+      });
+    }
+    cy += NH + GAP_Y;
+  });
+
+  return { pos, w: totalW, h: cy + MARGIN, visRows };
+}
+
+function drawNode(n, x, y, sel) {
+  const a = actorMap[n.actor];
+  const clr = a ? a.color : '#71717a';
+  const cx = x + NW / 2, cy = y + NH / 2;
+  const isDiamond = n.type === 'gate' || n.type === 'decision';
+  const isEnd = n.type === 'start' || n.type === 'end';
+  const isLoop = n.type === 'loop';
+  const isGate = n.type === 'gate';
+
+  const fillId = `fill-${n.id}`;
+  const sw = sel ? 2.5 : 1.2;
+  const stroke = sel ? '#fff' : clr;
+  let shape = '';
+
+  if (isDiamond) {
+    // Ромб повёрнутый на 45°
+    const dw = NW * 0.55, dh = NH * 0.65;
+    const pts = `${cx},${cy - dh} ${cx + dw},${cy} ${cx},${cy + dh} ${cx - dw},${cy}`;
+    shape += `<polygon points="${pts}" fill="url(#${fillId})" stroke="${stroke}" stroke-width="${sw}"/>`;
+    if (isGate) {
+      // Пульсирующий glow для gates
+      shape += `<polygon points="${pts}" fill="none" stroke="${clr}" stroke-width="0.6" stroke-dasharray="5,3" opacity="0.4">`;
+      shape += `<animate attributeName="stroke-dashoffset" values="0;16" dur="2s" repeatCount="indefinite"/></polygon>`;
+      // Внешний glow
+      shape += `<polygon points="${cx},${cy-dh-4} ${cx+dw+4},${cy} ${cx},${cy+dh+4} ${cx-dw-4},${cy}" fill="none" stroke="${clr}" stroke-width="0.3" opacity="0.15"/>`;
+    }
+  } else if (isEnd) {
+    // Stadium shape (pill)
+    const rx = NH / 2;
+    shape += `<rect x="${x}" y="${y}" width="${NW}" height="${NH}" rx="${rx}" fill="url(#${fillId})" stroke="${stroke}" stroke-width="${sw}"/>`;
+  } else if (isLoop) {
+    // Hexagon
+    const hx = 16;
+    const pts = `${x + hx},${y} ${x + NW - hx},${y} ${x + NW},${cy} ${x + NW - hx},${y + NH} ${x + hx},${y + NH} ${x},${cy}`;
+    shape += `<polygon points="${pts}" fill="url(#${fillId})" stroke="${stroke}" stroke-width="${sw}"/>`;
+    // Animated cycle arrows
+    shape += `<polygon points="${pts}" fill="none" stroke="${clr}" stroke-width="0.5" stroke-dasharray="6,4" opacity="0.3">`;
+    shape += `<animate attributeName="stroke-dashoffset" values="0;20" dur="3s" repeatCount="indefinite"/></polygon>`;
+  } else {
+    // Rounded rect — стандартный process
+    shape += `<rect x="${x}" y="${y}" width="${NW}" height="${NH}" rx="14" fill="url(#${fillId})" stroke="${stroke}" stroke-width="${sw}"/>`;
+  }
+
+  // Подсветка при выделении
+  if (sel) {
+    shape += `<rect x="${x - 3}" y="${y - 3}" width="${NW + 6}" height="${NH + 6}" rx="17" fill="none" stroke="${clr}" stroke-width="0.5" opacity="0.3"/>`;
+  }
+
+  // Текст
+  let lbl = n.label || n.id;
+  if (lbl.length > 24) lbl = lbl.slice(0, 22) + '…';
+  const fontSize = lbl.length > 18 ? 10 : 11;
+  const txt = `<text x="${cx}" y="${cy + 1}" text-anchor="middle" dominant-baseline="middle" fill="${sel ? '#fff' : clr}" font-size="${fontSize}" font-weight="600" font-family="Inter,system-ui,sans-serif">${h(lbl)}</text>`;
+
+  // Цветная полоска-индикатор слева
+  let indicator = '';
+  if (!isDiamond && !isEnd && !isLoop) {
+    indicator = `<rect x="${x}" y="${y + 8}" width="3" height="${NH - 16}" rx="1.5" fill="${clr}" opacity="0.6"/>`;
+  }
+
+  // Gate badge
+  let badge = '';
+  if (isGate) {
+    badge = `<circle cx="${x + NW - 10}" cy="${y + 10}" r="6" fill="rgba(248,113,113,0.2)" stroke="#f87171" stroke-width="0.5"/>`;
+    badge += `<text x="${x + NW - 10}" y="${y + 13}" text-anchor="middle" fill="#f87171" font-size="7" font-weight="800">G</text>`;
+  }
+
+  return `<g class="svg-node${sel ? ' selected' : ''}" data-id="${n.id}" style="cursor:pointer">${shape}${indicator}${badge}${txt}</g>`;
+}
+
+// Ортогональная ломаная: только горизонтали и вертикали, углы 90° со скруглением
+function orthoPath(pts, r) {
+  // pts = массив [x,y] точек ломаной
+  // r = радиус скругления углов
+  if (pts.length < 2) return '';
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let i = 1; i < pts.length; i++) {
+    if (i < pts.length - 1 && r > 0) {
+      // Скругление угла между 3 точками
+      const [ax, ay] = pts[i - 1];
+      const [bx, by] = pts[i];
+      const [cx, cy] = pts[i + 1];
+      // Направления входа и выхода
+      const dxIn = Math.sign(bx - ax), dyIn = Math.sign(by - ay);
+      const dxOut = Math.sign(cx - bx), dyOut = Math.sign(cy - by);
+      if (dxIn !== dxOut || dyIn !== dyOut) {
+        // Есть поворот — скругляем
+        const rr = Math.min(r, Math.abs(bx - ax) / 2 || r, Math.abs(by - ay) / 2 || r,
+                               Math.abs(cx - bx) / 2 || r, Math.abs(cy - by) / 2 || r);
+        const startX = bx - dxIn * rr, startY = by - dyIn * rr;
+        const endX = bx + dxOut * rr, endY = by + dyOut * rr;
+        d += ` L${startX},${startY}`;
+        d += ` Q${bx},${by} ${endX},${endY}`;
+        continue;
+      }
+    }
+    d += ` L${pts[i][0]},${pts[i][1]}`;
+  }
+  return d;
+}
+
+// Глобальный правый край всех узлов — вычисляется в render() перед drawEdge
+let _maxNodeRight = 0;
+let _minNodeLeft = 0;
+// Счётчик FAIL-рёбер (правый коридор) и loop-рёбер (левый коридор)
+let _failIdx = 0;
+let _loopIdx = 0;
+
+function drawEdge(e, pos) {
+  const from = pos[e.from], to = pos[e.to];
+  if (!from || !to) return '';
+
+  const isFail = e.type === 'fail';
+  const isLoop = e.type === 'loop';
+  const isOptional = e.type === 'optional';
+  const isPass = e.type === 'pass';
+
+  const srcNode = G.nodes.find(n => n.id === e.from);
+  const srcIsGate = srcNode && (srcNode.type === 'gate' || srcNode.type === 'decision');
+  // Только FAIL выходит вправо, PASS идёт вниз как обычное ребро
+  const failExit = isFail && srcIsGate;
+
+  // Цвета
+  const clr = isFail ? '#f87171' : isLoop ? '#fbbf24' : isPass ? '#34d399' : isOptional ? '#71717a' : 'rgba(255,255,255,0.18)';
+  const sw = (isFail || isPass) ? 1.5 : isLoop ? 1.3 : 1;
+  const dash = isOptional ? 'stroke-dasharray="6,4"' : '';
+  const R = 8;
+
+  const fromCx = from.x + NW / 2, fromBot = from.y + NH, fromMid = from.y + NH / 2;
+  const toCx = to.x + NW / 2, toTop = to.y, toMid = to.y + NH / 2;
+  const dw = NW * 0.55;
+
+  let pts = [];
+  let lblX, lblY;
+
+  if (failExit) {
+    // ── FAIL: выход с ПРАВОГО бока ромба ──
+    const exitX = fromCx + dw;
+    const exitY = fromMid;
+    const toLeft = to.x;
+
+    // Случай 1: цель на том же ряду и СПРАВА — прямая горизонтальная линия
+    if (Math.abs(fromMid - toMid) < NH && toLeft > exitX) {
+      pts = [[exitX, exitY], [toLeft, toMid]];
+      lblX = (exitX + toLeft) / 2;
+      lblY = exitY - 12;
+    } else {
+      const corridorX = _maxNodeRight + 40 + _failIdx * 18;
+      _failIdx++;
+      const toRight = to.x + NW;
+
+      // Проверяем: есть ли узлы-препятствия на горизонтальном пути от коридора к цели?
+      const hasBlocker = G.nodes.some(n => {
+        if (n.id === e.from || n.id === e.to) return false;
+        const p = pos[n.id];
+        if (!p) return false;
+        const nLeft = p.x, nRight = p.x + NW, nTop = p.y, nBot = p.y + NH;
+        return nRight > toRight && nLeft < corridorX && nTop < toMid + 6 && nBot > toMid - 6;
+      });
+
+      if (hasBlocker) {
+        // Обход снизу: коридор → ниже ряда цели → под препятствиями → вверх к цели снизу
+        const belowY = to.y + NH + GAP_Y * 0.4;
+        pts = [[exitX, exitY], [corridorX, exitY], [corridorX, belowY], [toCx, belowY], [toCx, to.y + NH]];
+      } else {
+        // Стандартный путь: коридор → горизонтально к правому краю цели (вход справа)
+        pts = [[exitX, exitY], [corridorX, exitY], [corridorX, toMid], [toRight, toMid]];
+      }
+      lblX = corridorX;
+      lblY = (exitY + (hasBlocker ? to.y + NH : toMid)) / 2;
+    }
+
+  } else if (toTop < fromBot - NH) {
+    // ── Backward loop: цель ВЫШЕ источника (строго выше, не на том же ряду) ──
+    // Маршрут: ↓вниз, ←влево до коридора, ↑вверх до уровня цели, → вход в цель слева
+    const loopX = _minNodeLeft - 40 - _loopIdx * 18;
+    _loopIdx++;
+    const belowY = fromBot + GAP_Y / 2;
+    const toLeft = to.x; // левый край целевого узла
+    pts = [[fromCx, fromBot], [fromCx, belowY], [loopX, belowY], [loopX, toMid], [toLeft, toMid]];
+    lblX = loopX;
+    lblY = (belowY + toMid) / 2;
+
+  } else if (Math.abs(fromCx - toCx) < 5) {
+    // ── Прямая вертикальная линия ──
+    pts = [[fromCx, fromBot], [fromCx, toTop]];
+    lblX = fromCx + NW / 2 + 8;
+    lblY = (fromBot + toTop) / 2;
+
+  } else if (Math.abs(from.y - to.y) < NH) {
+    // ── Один ряд: цель справа или слева — горизонтально через промежуток ниже ──
+    const belowY = Math.max(fromBot, to.y + NH) + GAP_Y * 0.4;
+    pts = [[fromCx, fromBot], [fromCx, belowY], [toCx, belowY], [toCx, to.y + NH]];
+    lblX = (fromCx + toCx) / 2;
+    lblY = belowY - 10;
+
+  } else {
+    // ── Обычное соединение (включая PASS) ──
+    const midY = (fromBot + toTop) / 2;
+    pts = [[fromCx, fromBot], [fromCx, midY], [toCx, midY], [toCx, toTop]];
+    lblX = (fromCx + toCx) / 2;
+    lblY = midY - 12;
+  }
+
+  const path = orthoPath(pts, R);
+
+  // Animated flow particles для основных путей
+  let animated = '';
+  if (!isOptional && !isFail) {
+    animated = `<circle r="2" fill="${clr}" opacity="0.6"><animateMotion dur="${3 + Math.random() * 2}s" repeatCount="indefinite" path="${path}"/></circle>`;
+  }
+
+  // Edge label — pill badge
+  let lbl = '';
+  if (e.label) {
+    const bgW = e.label.length * 5.5 + 16;
+    const bgH = 18;
+    lbl += `<rect x="${lblX - bgW/2}" y="${lblY - bgH/2}" width="${bgW}" height="${bgH}" rx="9" fill="rgba(0,0,0,0.7)" stroke="${clr}" stroke-width="0.5" opacity="0.8"/>`;
+    lbl += `<text x="${lblX}" y="${lblY + 1}" text-anchor="middle" dominant-baseline="middle" fill="${clr}" font-size="8" font-weight="700" font-family="Inter,system-ui,sans-serif">${h(e.label)}</text>`;
+  }
+
+  const arrowId = isFail ? 'red' : isLoop ? 'amber' : isPass ? 'green' : 'default';
+  return `<path d="${path}" fill="none" stroke="${clr}" stroke-width="${sw}" ${dash} marker-end="url(#arrow-${arrowId})"/>${animated}${lbl}`;
+}
+
+let selectedNode = null;
+
+function render() {
+  buildFilters();
+  const vis = getVisible();
+  const visIds = new Set(vis.map(n => n.id));
+  const { pos, w, h: svgH, visRows } = layout(vis);
+  const svg = $('svg');
+  // Временный большой viewBox чтобы getBBox() корректно работал после innerHTML
+  svg.setAttribute('viewBox', `-200 0 ${w + 600} ${svgH}`);
+
+  // ── Defs: маркеры + градиенты ──
+  let html = `<defs>
+    <marker id="arrow-default" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L8,5 L0,9" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/></marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L8,5 L0,9" fill="none" stroke="#f87171" stroke-width="1.5"/></marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L8,5 L0,9" fill="none" stroke="#fbbf24" stroke-width="1.5"/></marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L8,5 L0,9" fill="none" stroke="#34d399" stroke-width="1.5"/></marker>`;
+  vis.forEach(n => {
+    const a = actorMap[n.actor];
+    const clr = a ? a.color : '#71717a';
+    const isGate = n.type === 'gate';
+    html += `<linearGradient id="fill-${n.id}" x1="0" y1="0" x2="0.5" y2="1">`;
+    html += `<stop offset="0%" stop-color="${clr}" stop-opacity="${isGate ? 0.18 : 0.10}"/>`;
+    html += `<stop offset="100%" stop-color="${clr}" stop-opacity="0.02"/>`;
+    html += `</linearGradient>`;
+    // Glow для gate
+    if (isGate) {
+      html += `<filter id="glow-${n.id}" x="-30%" y="-30%" width="160%" height="160%">`;
+      html += `<feGaussianBlur stdDeviation="6" result="blur"/><feComposite in="SourceGraphic" in2="blur" operator="over"/>`;
+      html += `</filter>`;
+    }
+  });
+  html += `</defs>`;
+
+  // ── Phase lanes (фоновые полосы + крупные боковые подписи) ──
+  // Сначала вычисляем raw-границы каждой фазы, потом делим зазоры пополам
+  const LANE_LABEL_W = 32;
+  if (visRows.length > 0) {
+    const allNodePositions = Object.values(pos);
+    if (allNodePositions.length > 0) {
+      // 1) Собираем raw minY/maxY для каждой фазы
+      const phaseData = phaseRanges.map(phase => {
+        let phaseMinY = Infinity, phaseMaxY = -Infinity;
+        for (let ri = phase.rows[0]; ri <= phase.rows[1] && ri < flowRows.length; ri++) {
+          flowRows[ri].forEach(id => {
+            if (id && pos[id]) {
+              phaseMinY = Math.min(phaseMinY, pos[id].y);
+              phaseMaxY = Math.max(phaseMaxY, pos[id].y + NH);
+            }
+          });
+        }
+        return { phase, minY: phaseMinY, maxY: phaseMaxY };
+      }).filter(d => d.minY < Infinity);
+
+      // 2) Рассчитываем границы без наложений: делим gap между фазами ровно пополам
+      const GAP_HALF = 2; // минимальный зазор между фазами
+      const laneRects = phaseData.map((d, i) => {
+        let top, bot;
+        if (i === 0) {
+          top = d.minY - 12; // отступ сверху для первой фазы
+        } else {
+          // Середина зазора между предыдущей и текущей фазой
+          const prevBot = phaseData[i - 1].maxY;
+          top = (prevBot + d.minY) / 2 + GAP_HALF;
+        }
+        if (i === phaseData.length - 1) {
+          bot = d.maxY + 12; // отступ снизу для последней фазы
+        } else {
+          const nextTop = phaseData[i + 1].minY;
+          bot = (d.maxY + nextTop) / 2 - GAP_HALF;
+        }
+        return { ...d, top, bot };
+      });
+
+      // 3) Рисуем
+      laneRects.forEach(({ phase, top, bot }) => {
+        const laneH = bot - top;
+        // Фоновая полоса
+        html += `<rect x="${LANE_LABEL_W + 4}" y="${top}" width="${w - LANE_LABEL_W - 12}" height="${laneH}" rx="10" fill="${phase.clr}" stroke="${phase.border}" stroke-width="0.5"/>`;
+        // Боковой таб слева
+        const tabClr = phase.border.replace(/[\d.]+\)$/, '0.35)');
+        const textClr = phase.border.replace(/[\d.]+\)$/, '0.9)');
+        html += `<rect x="2" y="${top}" width="${LANE_LABEL_W}" height="${laneH}" rx="6" fill="${tabClr}"/>`;
+        // Вертикальный текст — размер адаптируется к высоте полосы
+        const textY = top + laneH / 2;
+        const labelUp = phase.name.toUpperCase();
+        const maxTextLen = laneH - 12; // доступная длина текста
+        const fontSize = Math.min(10, maxTextLen / labelUp.length * 1.3);
+        const ls = fontSize > 7 ? 1.5 : 0.5;
+        html += `<text x="${LANE_LABEL_W / 2 + 2}" y="${textY}" fill="${textClr}" font-size="${fontSize}" font-weight="800" font-family="Inter,system-ui,sans-serif" letter-spacing="${ls}" text-anchor="middle" dominant-baseline="middle" transform="rotate(-90, ${LANE_LABEL_W / 2 + 2}, ${textY})">${labelUp}</text>`;
+      });
+    }
+  }
+
+  // ── Edges (behind nodes) ──
+  // Вычисляем границы всех узлов для FAIL (правый) и loop (левый) коридоров
+  _maxNodeRight = 0;
+  _minNodeLeft = Infinity;
+  vis.forEach(n => {
+    if (pos[n.id]) {
+      _maxNodeRight = Math.max(_maxNodeRight, pos[n.id].x + NW);
+      _minNodeLeft = Math.min(_minNodeLeft, pos[n.id].x);
+    }
+  });
+  if (_minNodeLeft === Infinity) _minNodeLeft = MARGIN;
+  _failIdx = 0;
+  _loopIdx = 0;
+  G.edges.forEach(e => { if (visIds.has(e.from) && visIds.has(e.to)) html += drawEdge(e, pos); });
+
+  // ── Nodes (on top) ──
+  vis.forEach(n => { if (pos[n.id]) html += drawNode(n, pos[n.id].x, pos[n.id].y, selectedNode === n.id); });
+
+  svg.innerHTML = html;
+
+  // Автоподгонка viewBox по фактическим границам содержимого
+  try {
+    const bbox = svg.getBBox();
+    if (bbox.width > 0 && bbox.height > 0) {
+      const pad = 20;
+      svg.setAttribute('viewBox', `${bbox.x - pad} ${bbox.y - pad} ${bbox.width + pad * 2} ${bbox.height + pad * 2}`);
+    } else {
+      svg.setAttribute('viewBox', `0 0 ${w} ${svgH}`);
+    }
+  } catch(_) {
+    svg.setAttribute('viewBox', `0 0 ${w} ${svgH}`);
+  }
+  svg.style.width = '100%';
+  svg.style.height = 'auto';
+  svg.removeAttribute('width');
+  svg.removeAttribute('height');
+
+  svg.querySelectorAll('.svg-node').forEach(el => {
+    el.onclick = () => { selectedNode = el.dataset.id; render(); showDetail(el.dataset.id); };
+  });
+}
+
+function showDetail(id) {
+  const n = G.nodes.find(x => x.id === id); if (!n) return;
+  const a = actorMap[n.actor];
+  const gate = gateMap[id];
+  let html = `<h2 style="color:${a ? a.color : 'var(--text)'}">${h(n.label)}</h2>`;
+  html += `<div style="margin-bottom:12px;display:flex;flex-wrap:wrap;gap:4px">`;
+  html += `<span class="tag" style="background:${a ? a.color : '#666'}22;color:${a ? a.color : '#999'}">${a ? a.name : n.actor}</span>`;
+  html += `<span class="tag" style="background:var(--glass2);color:var(--text3)">${n.type}</span>`;
+  html += `<span class="tag" style="background:var(--glass2);color:var(--text3)">${n.category}</span>`;
+  if (n.tags) n.tags.forEach(t => { html += `<span class="tag" style="background:var(--cyan-glow);color:var(--cyan)">${t}</span>`; });
+  html += `</div>`;
+  html += `<p>${h(n.description)}</p>`;
+  if (n.source_ref) html += `<h3>Источник</h3><div class="src-tag">${h(n.source_ref)}</div>`;
+
+  if (gate) {
+    html += `<h3>Gate: ${h(gate.name)}</h3>`;
+    html += `<table><tr><td style="font-weight:700;width:80px;color:var(--text2)">Trigger</td><td>${h(gate.trigger)}</td></tr>`;
+    html += `<tr><td style="font-weight:700;color:var(--text2)">Condition</td><td><span class="src-tag">${h(gate.condition)}</span></td></tr>`;
+    html += `<tr><td><span class="badge b-pass">PASS</span></td><td>${h(gate.pass)}</td></tr>`;
+    html += `<tr><td><span class="badge b-fail">FAIL</span></td><td>${h(gate.fail)}</td></tr></table>`;
+  }
+
+  // Connections
+  const incoming = G.edges.filter(e => e.to === id);
+  const outgoing = G.edges.filter(e => e.from === id);
+  if (incoming.length || outgoing.length) {
+    html += `<h3>Связи</h3><table><tr><th>Направление</th><th>Узел</th><th>Метка</th><th>Тип</th></tr>`;
+    incoming.forEach(e => { const fn = G.nodes.find(x => x.id === e.from); html += `<tr><td style="color:var(--green)">← вход</td><td>${fn ? h(fn.label) : e.from}</td><td>${h(e.label)}</td><td><span class="badge b-info">${e.type}</span></td></tr>`; });
+    outgoing.forEach(e => { const tn = G.nodes.find(x => x.id === e.to); html += `<tr><td style="color:var(--accent)">→ выход</td><td>${tn ? h(tn.label) : e.to}</td><td>${h(e.label)}</td><td><span class="badge b-info">${e.type}</span></td></tr>`; });
+    html += `</table>`;
+  }
+
+  $('detail').innerHTML = html;
+}
+
+// ── Bottom tabs ──
+const tabDefs = [
+  ['commands','Commands','#6366f1','⌘'],
+  ['artifacts','Artifacts','#06b6d4','◆'],
+  ['gates','Gates','#ef4444','⛊'],
+  ['prompts','Prompts','#a78bfa','✦'],
+  ['stats','Stats','#22c55e','▣']
+];
+$('btabs').innerHTML = tabDefs.map(t => `<button class="bottom-tab" data-ft="${t[0]}" style="--tab-clr:${t[2]}">${t[3]} ${t[1]}</button>`).join('');
+let curTab = null;
+$('btabs').querySelectorAll('.bottom-tab').forEach(b => b.onclick = () => {
+  const id = b.dataset.ft;
+  if (curTab === id) { curTab = null; } else { curTab = id; }
+  $('btabs').querySelectorAll('.bottom-tab').forEach(x => x.classList.toggle('active', x.dataset.ft === curTab));
+  tabDefs.forEach(t => $('p-' + t[0]).classList.toggle('visible', t[0] === curTab));
+});
+
+// ── Commands panel ──
+if (CMD) {
+  let html = `<h2 style="font-size:16px;font-weight:700;margin-bottom:14px">Slash-команды (${CMD.commands.length})</h2>`;
+  CMD.commands.forEach(c => {
+    html += `<div style="margin-bottom:18px;padding:16px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--r-sm)">`;
+    html += `<div style="font-size:14px;font-weight:700;color:var(--accent);margin-bottom:6px">${h(c.name)}</div>`;
+    html += `<p style="font-size:12px;color:var(--text2);margin-bottom:8px">${h(c.description)}</p>`;
+    html += `<div style="font-size:11px;color:var(--text3)"><b style="color:var(--text2)">File:</b> <span class="src-tag">${h(c.file)}</span></div>`;
+    if (c.has_gate) html += `<div style="font-size:11px;margin-top:4px"><b style="color:var(--text2)">Gate:</b> <span class="badge b-gate">${h(c.gate_id)}</span></div>`;
+    html += `<div style="font-size:11px;margin-top:8px;color:var(--text2);font-weight:600">Steps:</div>`;
+    html += `<ol style="font-size:11px;padding-left:20px;color:var(--text3);margin-top:4px">`;
+    c.steps.forEach(s => { html += `<li style="margin-bottom:3px">${h(s)}</li>`; });
+    html += `</ol>`;
+    html += `<div style="font-size:11px;margin-top:6px"><b style="color:var(--text2)">Inputs:</b> ${c.inputs.map(i => `<span class="src-tag">${h(i)}</span>`).join(' ')}</div>`;
+    html += `<div style="font-size:11px;margin-top:4px"><b style="color:var(--text2)">Outputs:</b> ${c.outputs.join(', ')}</div>`;
+    if (c.variants) {
+      html += `<div style="font-size:11px;margin-top:8px;color:var(--text2);font-weight:600">Variants:</div>`;
+      html += `<table style="margin-top:4px">`;
+      Object.entries(c.variants).forEach(([k, v]) => { html += `<tr><td style="font-weight:700;color:var(--accent)">${h(k)}</td><td style="color:var(--text3)">${h(v)}</td></tr>`; });
+      html += `</table>`;
+    }
+    html += `</div>`;
+  });
+  $('p-commands').innerHTML = html;
+}
+
+// ── Artifacts panel ──
+if (ART) {
+  const wfArts = ART.artifacts.filter(a => a.role === 'workflow_templates');
+  const otherArts = ART.artifacts.filter(a => a.role !== 'workflow_templates');
+  let html = `<h2 style="font-size:16px;font-weight:700;margin-bottom:14px">Артефакты проекта (${ART.artifacts.length})</h2>`;
+  html += `<table><tr><th>Name</th><th>Path</th><th>Role</th><th>Description</th></tr>`;
+  otherArts.forEach(a => {
+    html += `<tr><td style="font-weight:700;color:var(--text)">${h(a.name || a.id)}</td><td><span class="src-tag">${h(a.path)}</span></td><td><span class="badge b-gate">${h(a.role)}</span></td><td style="color:var(--text3)">${h(a.description)}</td></tr>`;
+  });
+  html += `</table>`;
+  if (wfArts.length) {
+    html += `<h2 style="font-size:16px;font-weight:700;margin-top:20px;margin-bottom:10px">Workflow Templates (${wfArts.length})</h2>`;
+    html += `<p style="font-size:11px;color:var(--text3);margin-bottom:8px">Bundled из Orbital Kuiper. Копировать: <code style="color:var(--cyan)">cp -r docs/decision-tree/workflows/ &lt;project&gt;/.agent/workflows/</code></p>`;
+    html += `<table><tr><th>Name</th><th>Path</th><th>Description</th></tr>`;
+    wfArts.forEach(a => {
+      html += `<tr><td style="font-weight:700;color:var(--text)">${h(a.name || a.id)}</td><td><span class="src-tag">${h(a.path)}</span></td><td style="color:var(--text3)">${h(a.description)}</td></tr>`;
+    });
+    html += `</table>`;
+  }
+  $('p-artifacts').innerHTML = html;
+}
+
+// ── Gates panel ──
+if (GAT) {
+  let html = `<h2 style="font-size:16px;font-weight:700;margin-bottom:14px">Hard Gates (${GAT.gates.length})</h2>`;
+  GAT.gates.forEach(g => {
+    html += `<div style="margin-bottom:12px;padding:14px 18px;background:var(--glass);border:1px solid var(--glass-border);border-left:3px solid var(--red);border-radius:var(--r-sm)">`;
+    html += `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">${h(g.name)} <span class="badge b-hard">${g.type}</span></div>`;
+    html += `<table style="margin:0"><tr><td style="width:80px;font-weight:700;color:var(--text2)">Trigger</td><td style="color:var(--text3)">${h(g.trigger)}</td></tr>`;
+    html += `<tr><td style="font-weight:700;color:var(--text2)">Condition</td><td><span class="src-tag">${h(g.condition)}</span></td></tr>`;
+    html += `<tr><td><span class="badge b-pass">PASS</span></td><td style="color:var(--green)">${h(g.pass)}</td></tr>`;
+    html += `<tr><td><span class="badge b-fail">FAIL</span></td><td style="color:var(--red)">${h(g.fail)}</td></tr></table></div>`;
+  });
+  $('p-gates').innerHTML = html;
+}
+
+// ── Prompts panel ──
+$('p-prompts').innerHTML = `<h2 style="font-size:16px;font-weight:700;margin-bottom:14px">Шаблоны промптов</h2>
+<h3 style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px">0. PLUGIN_CHECK</h3>
+<pre>PLUGIN_CHECK
+  baseline_status: PASS | FAIL
+  missing_plugins: [name1, name2] | none
+  gh_auth: PASS | FAIL
+  command: bash docs/decision-tree/scripts/check-prereqs.sh --strict</pre>
+<h3 style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px">1. SKILLS PLAN</h3>
+<pre>SKILLS PLAN:
+- selected_skills: [skill1, skill2, ...]
+- order: 1. skill1 → 2. skill2 → ...
+- why_each: skill1 — причина; skill2 — причина</pre>
+<h3 style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px">2. REVIEW_HANDOFF</h3>
+<pre>REVIEW_HANDOFF
+  review_id: &lt;REVIEW_ID&gt;
+  branch: &lt;ветка&gt;
+  commit: &lt;sha&gt;
+  changed_files: &lt;список&gt;
+  contracts_changed: yes/no
+  migrations_changed: yes/no
+  checks_profile: STD-API | STD-WEB | CUSTOM
+  selected_skills: [...]
+  skills_used: [...]
+  known_risks: P1/P2/P3</pre>
+<h3 style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px">3. TEST_REPORT</h3>
+<pre>TEST_REPORT
+  checks_profile: STD-API | STD-WEB | CUSTOM
+  commands_run:
+    - pnpm --filter @app/api build        ✅ PASS
+    - pnpm --filter @app/api typecheck    ✅ PASS
+    - pnpm --filter @app/api test         ✅ N/N PASS
+  result: PASS | FAIL | BLOCKED
+  failed_items: none
+  residual_risks: P3 ...</pre>
+<h3 style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px">Checks Profiles</h3>
+<table><tr><th>Profile</th><th>Commands</th></tr>
+<tr><td style="font-weight:700;color:var(--text)">STD-API</td><td style="color:var(--text3)">build + typecheck + test + migrate/seed</td></tr>
+<tr><td style="font-weight:700;color:var(--text)">STD-WEB</td><td style="color:var(--text3)">build + lint + typecheck</td></tr>
+<tr><td style="font-weight:700;color:var(--text)">CUSTOM</td><td style="color:var(--text3)">Объяснить почему STD-* не подходит</td></tr></table>`;
+
+// ── Stats panel ──
+if (ST) {
+  let html = `<h2 style="font-size:16px;font-weight:700;margin-bottom:14px">Метрики проекта</h2>`;
+  html += `<table><tr><th>Metric</th><th>Value</th></tr>`;
+  Object.entries(ST).forEach(([k, v]) => {
+    html += `<tr><td style="font-weight:700;color:var(--text)">${h(k)}</td><td style="color:var(--text2)">${h(v)}</td></tr>`;
+  });
+  html += `</table>`;
+  html += `<p style="font-size:10px;color:var(--text3);margin-top:10px">Обновить: <code style="color:var(--cyan)">bash scripts/sync.sh &gt; data/stats.json</code></p>`;
+  $('p-stats').innerHTML = html;
+} else {
+  $('p-stats').innerHTML = '<h2 style="font-size:16px;font-weight:700">Stats</h2><p style="color:var(--text3)">Запустите <code style="color:var(--cyan)">bash scripts/sync.sh > data/stats.json</code></p>';
+}
+
+render();
+})();
+</script>
+</body>
+</html>
