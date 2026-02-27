@@ -159,6 +159,45 @@ body::before {
   margin-top: 16px;
 }
 
+.hero-split {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 10px;
+}
+@media(max-width:900px) {
+  .hero-split { grid-template-columns: 1fr; }
+}
+
+.hero-pane {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.hero-pane p {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.6;
+}
+
+.hero-pane ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.hero-pane li {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.6;
+  margin-bottom: 4px;
+}
+
+.hero-pane li:last-child {
+  margin-bottom: 0;
+}
+
 .stat-card {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.06);
@@ -640,7 +679,7 @@ pre {
       <ul>
         <li>Граф строится из <code>data/graph.json</code> — узлы (process, gate, decision, loop) и рёбра</li>
         <li>4 исполнителя, каждый своим цветом: <code>Claude Code</code>, <code>Codex</code>, <code>User</code>, <code>Skills</code></li>
-        <li>5 hard gates блокируют переход при FAIL</li>
+        <li>6 hard gates блокируют переход при FAIL</li>
         <li>Project-specific слой в <code>extensions/&lt;project&gt;/</code></li>
       </ul>
       <span class="info-sub">Навигация</span>
@@ -681,7 +720,7 @@ pre {
   <div id="p-artifacts" class="glass tab-panel"></div>
   <div id="p-gates" class="glass tab-panel"></div>
   <div id="p-prompts" class="glass tab-panel"></div>
-  <div id="p-stats" class="glass tab-panel"></div>
+  <div id="p-cheatsheet" class="glass tab-panel"></div>
 
   <div class="footer" id="footer-sources"></div>
 </div>
@@ -725,7 +764,19 @@ const sourceList = (CFG && Array.isArray(CFG.source_of_truth) && CFG.source_of_t
   ? CFG.source_of_truth.join(' + ') : 'not configured';
 if ($('footer-sources')) $('footer-sources').textContent = 'Decision Tree · Liquid Glass · Источники: ' + sourceList;
 
-$('stats').innerHTML = `<p style="font-size:12px;color:var(--text2);line-height:1.6;margin:0">Self-contained пакет для визуализации процесса разработки и review loop. Standalone HTML без внешних зависимостей — рендерит SVG-граф из JSON-данных. Universal baseline: подключается в любой проект без изменения core-данных.</p>`;
+$('stats').innerHTML = `
+  <div class="hero-split">
+    <div class="hero-pane">
+      <p style="margin:0">Decision Tree Engine — универсальный AI-оркестратор: подключается к любому проекту без правок core-данных, координирует работу ИИ-агентов как команды (у каждого роль и правила), пригоден и для быстрых MVP, и для сложных систем. Здесь визуально показаны review loop и архитектура процесса разработки.</p>
+    </div>
+    <div class="hero-pane">
+      <ul>
+        <li>Жесткие контрольные точки (plugin/skills/test/architecture/review gates) останавливают цикл при нарушениях.</li>
+        <li>Расширяемость: доменные модули через <code>extensions/&lt;project&gt;/</code>, ядро остается неизменным.</li>
+        <li>Конфигурируемость: все в <code>*.json</code>, UI — один <code>index.html</code>, работает офлайн.</li>
+      </ul>
+    </div>
+  </div>`;
 
 // ── Expandable sections ──
 {
@@ -1422,7 +1473,7 @@ const tabDefs = [
   ['artifacts','Artifacts','#06b6d4','◆'],
   ['gates','Gates','#ef4444','⛊'],
   ['prompts','Prompts','#a78bfa','✦'],
-  ['stats','Stats','#22c55e','▣']
+  ['cheatsheet','Шпаргалка','#818cf8','☰']
 ];
 $('btabs').innerHTML = tabDefs.map(t => `<button class="bottom-tab" data-ft="${t[0]}" style="--tab-clr:${t[2]}">${t[3]} ${t[1]}</button>`).join('');
 let curTab = null;
@@ -1536,19 +1587,93 @@ $('p-prompts').innerHTML = `<h2 style="font-size:16px;font-weight:700;margin-bot
 <tr><td style="font-weight:700;color:var(--text)">STD-WEB</td><td style="color:var(--text3)">build + lint + typecheck</td></tr>
 <tr><td style="font-weight:700;color:var(--text)">CUSTOM</td><td style="color:var(--text3)">Объяснить почему STD-* не подходит</td></tr></table>`;
 
-// ── Stats panel ──
-if (ST) {
-  let html = `<h2 style="font-size:16px;font-weight:700;margin-bottom:14px">Метрики проекта</h2>`;
-  html += `<table><tr><th>Metric</th><th>Value</th></tr>`;
-  Object.entries(ST).forEach(([k, v]) => {
-    html += `<tr><td style="font-weight:700;color:var(--text)">${h(k)}</td><td style="color:var(--text2)">${h(v)}</td></tr>`;
+// ── Cheatsheet panel ──
+{
+  const cs = [
+    {
+      color: 'var(--accent)',
+      title: 'В начале каждой задачи',
+      rows: [
+        ['/model sonnet', 'Реализация, рефакторинг, фичи, тесты, docs'],
+        ['/model opus', 'Сложная архитектура, миграции, security/legal review, root-cause бага'],
+        ['Codex 5.3', 'Ревью / архитектура обычной сложности (дефолт)'],
+        ['Codex 5.1 Max', 'Ревью с повышенным риском: security, миграции'],
+        ['Skill-First', 'SKILLS PLAN → реализация (Skills Gate обязателен)'],
+        ['Test Gate', 'Обязателен перед REVIEW_HANDOFF: TEST_REPORT result=PASS'],
+      ]
+    },
+    {
+      color: 'var(--green)',
+      title: 'Визуализация и статус',
+      rows: [
+        ['/status', 'Состояние по фазам, блокеры из REVIEW_LOG, следующая задача'],
+        ['/progress', 'Обновить docs/progress.html (dashboard прогресса)'],
+        ['/architecture', 'Обновить preview_architecture.html + HARD GATE валидация'],
+      ]
+    },
+    {
+      color: 'var(--cyan)',
+      title: 'Код ревью',
+      rows: [
+        ['/reviewcode', 'Вся ветка vs main (по умолчанию)'],
+        ['/reviewcode staged', 'Только staged changes'],
+        ['/reviewcode last', 'Последний коммит'],
+        ['/reviewcode commit:SHA', 'Конкретный коммит по SHA'],
+      ]
+    },
+    {
+      color: 'var(--amber)',
+      title: 'Управление контекстом',
+      rows: [
+        ['/compact', 'Сжать контекст в саммари (использовать перед большими задачами)'],
+        ['/clear', 'Сбросить контекст при переходе к новой фиче (также: /reset, /new)'],
+        ['/context', 'Просмотр контекста (токены)'],
+        ['/rewind', 'Откатить состояние/код назад'],
+        ['/model', 'Сменить модель в текущей сессии'],
+        ['Shift+Tab', 'Plan mode — планирование перед реализацией'],
+      ]
+    },
+    {
+      color: 'var(--pink)',
+      title: 'Сессии и восстановление',
+      rows: [
+        ['claude --resume', 'Открыть последнюю сессию с полным контекстом'],
+        ['claude --resume-list', 'Выбрать конкретную сессию из списка'],
+        ['/exit / Ctrl+C', 'Выход из сессии'],
+        ['Restore code and conversation', 'Восстановить код и разговор при прерывании'],
+        ['Restore conversation', 'Восстановить только разговор'],
+        ['Restore code', 'Восстановить только код'],
+        ['Summarize from here', 'Подвести итоги с текущей точки'],
+        ['Never mind', 'Отменить восстановление, ничего не делать'],
+      ]
+    },
+    {
+      color: 'var(--text3)',
+      title: 'Разрешения и инициализация',
+      rows: [
+        ['claude --permission-mode dontAsk', 'Автоматическое подтверждение всех разрешений'],
+        ['/permission', 'Управление разрешениями в сессии'],
+        ['/init', 'Инициализация архитектуры проекта (учитывает Architecture.MD и др.)'],
+        ['/config', 'Настройка модели и параметров сессии'],
+      ]
+    },
+  ];
+  let html = `<h2 style="font-size:16px;font-weight:700;margin-bottom:6px">Шпаргалка Claude Code</h2>`;
+  html += `<p style="font-size:11px;color:var(--text3);margin-bottom:16px">Быстрый справочник по командам и правилам рабочего цикла.</p>`;
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">`;
+  cs.forEach(section => {
+    html += `<div style="padding:14px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--r-sm)">`;
+    html += `<div style="font-size:10px;font-weight:700;color:${section.color};text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid var(--glass-border);padding-bottom:6px;margin-bottom:8px">${section.title}</div>`;
+    html += `<table style="margin:0"><tr><th style="width:185px">Команда</th><th>Что делает</th></tr>`;
+    section.rows.forEach(([cmd, desc]) => {
+      html += `<tr><td><span class="src-tag" style="white-space:nowrap">${h(cmd)}</span></td><td style="color:var(--text3);font-size:11px">${h(desc)}</td></tr>`;
+    });
+    html += `</table></div>`;
   });
-  html += `</table>`;
-  html += `<p style="font-size:10px;color:var(--text3);margin-top:10px">Обновить: <code style="color:var(--cyan)">bash scripts/sync.sh &gt; data/stats.json</code></p>`;
-  $('p-stats').innerHTML = html;
-} else {
-  $('p-stats').innerHTML = '<h2 style="font-size:16px;font-weight:700">Stats</h2><p style="color:var(--text3)">Запустите <code style="color:var(--cyan)">bash scripts/sync.sh > data/stats.json</code></p>';
+  html += `</div>`;
+  $('p-cheatsheet').innerHTML = html;
 }
+
 
 render();
 })();
