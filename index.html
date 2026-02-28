@@ -660,6 +660,20 @@ pre {
   font-size: 11px;
   margin-left: 6px;
 }
+.practice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.practice-inner-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 900px) {
+  .practice-grid { grid-template-columns: 1fr; }
+  .practice-inner-grid { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
@@ -720,6 +734,7 @@ pre {
   <div id="p-artifacts" class="glass tab-panel"></div>
   <div id="p-gates" class="glass tab-panel"></div>
   <div id="p-prompts" class="glass tab-panel"></div>
+  <div id="p-practice" class="glass tab-panel"></div>
   <div id="p-cheatsheet" class="glass tab-panel"></div>
 
   <div class="footer" id="footer-sources"></div>
@@ -1473,6 +1488,7 @@ const tabDefs = [
   ['artifacts','Artifacts','#06b6d4','◆'],
   ['gates','Gates','#ef4444','⛊'],
   ['prompts','Prompts','#a78bfa','✦'],
+  ['practice','Практика','#0ea5e9','⚙'],
   ['cheatsheet','Шпаргалка','#818cf8','☰']
 ];
 $('btabs').innerHTML = tabDefs.map(t => `<button class="bottom-tab" data-ft="${t[0]}" style="--tab-clr:${t[2]}">${t[3]} ${t[1]}</button>`).join('');
@@ -1586,6 +1602,123 @@ $('p-prompts').innerHTML = `<h2 style="font-size:16px;font-weight:700;margin-bot
 <tr><td style="font-weight:700;color:var(--text)">STD-API</td><td style="color:var(--text3)">build + typecheck + test + migrate/seed</td></tr>
 <tr><td style="font-weight:700;color:var(--text)">STD-WEB</td><td style="color:var(--text3)">build + lint + typecheck</td></tr>
 <tr><td style="font-weight:700;color:var(--text)">CUSTOM</td><td style="color:var(--text3)">Объяснить почему STD-* не подходит</td></tr></table>`;
+
+// ── Practice panel ──
+{
+  const card = (color, title, body, fullWidth) =>
+    `<div style="padding:14px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--r-sm)${fullWidth ? ';grid-column:1 / -1' : ''}">` +
+    `<div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid var(--glass-border);padding-bottom:6px;margin-bottom:10px">${title}</div>` +
+    body + `</div>`;
+  const tbl = (head, rows) => {
+    let t = `<table style="margin:0"><tr>` + head.map(c => `<th>${h(c)}</th>`).join('') + `</tr>`;
+    rows.forEach(r => { t += `<tr>` + r.map((c,i) => `<td style="color:${i===0?'var(--text)':'var(--text3)'};font-size:11px${i===0?';font-weight:600':''}"><span class="src-tag" style="white-space:nowrap">${h(c)}</span></td>`).join('') + `</tr>`; });
+    return t + `</table>`;
+  };
+  const list = (items) =>
+    `<ol style="margin:0;padding-left:18px;color:var(--text2);font-size:11px;line-height:1.7">` +
+    items.map(i => `<li>${h(i)}</li>`).join('') + `</ol>`;
+
+  let html = `<h2 style="font-size:16px;font-weight:700;margin-bottom:6px">Практика</h2>`;
+  html += `<p style="font-size:11px;color:var(--text3);margin-bottom:16px">CI-проверки, оркестрация агентов, quality gates и стандартные рабочие сценарии.</p>`;
+  html += `<div class="practice-grid">`;
+
+  // Секция 1 — CI-проверки (cyan, узкая)
+  {
+    let b = `<div style="font-size:10px;font-weight:600;color:var(--text3);margin-bottom:6px">Профили проверок</div>`;
+    b += tbl(['Profile','Команды','Когда'], [
+      ['STD-API','build + typecheck + test + migrate/seed','backend changes'],
+      ['STD-WEB','build + lint + typecheck','frontend changes'],
+      ['CUSTOM','обоснование почему STD-* не подходит','специфика проекта'],
+    ]);
+    b += `<div style="font-size:10px;font-weight:600;color:var(--text3);margin:10px 0 6px">Триггеры</div>`;
+    b += tbl(['Момент','Команда','Условие'], [
+      ['Старт задачи','check-prereqs.sh --strict','plugin-gate'],
+      ['Перед handoff','TEST_REPORT','result=PASS обязателен'],
+      ['После handoff','Codex review','REVIEW_HANDOFF передан'],
+    ]);
+    html += card('var(--cyan)', 'CI-проверки', b, false);
+  }
+
+  // Секция 2 — Multi-agent Orchestrator (accent, full-width)
+  {
+    let b = `<div class="practice-inner-grid">`;
+    b += `<div>`;
+    b += `<div style="font-size:10px;font-weight:600;color:var(--text3);margin-bottom:6px">Роли агентов</div>`;
+    b += tbl(['Агент','Роль','Модель'], [
+      ['Claude Code','Implementer','Sonnet / Opus'],
+      ['Codex','Reviewer / Architect','5.3 / 5.1 Max'],
+      ['User','Decision Maker','—'],
+    ]);
+    b += `<div style="font-size:10px;font-weight:600;color:var(--text3);margin:10px 0 6px">Fallback-логика</div>`;
+    b += tbl(['Ситуация','Действие'], [
+      ['Tests FAIL','вернуться к реализации'],
+      ['Architecture Gate FAIL','BLOCKED до устранения расхождений'],
+      ['Review Blocker FAIL','закрыть открытые review'],
+    ]);
+    b += `</div><div>`;
+    b += `<div style="font-size:10px;font-weight:600;color:var(--text3);margin-bottom:6px">Цикл</div>`;
+    b += list([
+      'User → задача → Claude Code',
+      'Claude Code → реализация → тесты',
+      'TEST_REPORT PASS → REVIEW_HANDOFF → Codex',
+      'Codex → verdict: APPROVED или CHANGES_REQUESTED',
+      'CHANGES_REQUESTED → Claude fixes → повторный review loop',
+      'APPROVED → Docs sync / optional /architecture / /status',
+    ]);
+    b += `<div style="font-size:10px;font-weight:600;color:var(--text3);margin:10px 0 6px">Контроль ошибок</div>`;
+    b += tbl(['Инструмент','Что делает'], [
+      ['REVIEW_LOG','статус IN_REVIEW / CHANGES_REQUESTED / APPROVED'],
+      ['/status','проверка блокеров перед новой задачей'],
+      ['Hard Gate FAIL','стоп цикла до устранения'],
+    ]);
+    b += `</div></div>`;
+    html += card('var(--accent)', 'Multi-agent Orchestrator', b, true);
+  }
+
+  // Секция 3 — Quality Gates порядок (red, узкая)
+  {
+    let b = tbl(['№','Gate','Триггер','При FAIL'], [
+      ['1','plugin-gate','перед реализацией и ревью','устранить missing plugins/prereqs'],
+      ['2','planning-gate','перед каждой задачей, до SKILLS PLAN','обновить skills/плагины, выполнить pre_task_check'],
+      ['3','skills-gate','перед анализом и изменениями','уточнить SKILLS PLAN (selected_skills, order, why_each)'],
+      ['4','test-gate','после реализации, до REVIEW_HANDOFF','BLOCKED: причина + команда воспроизведения + план'],
+      ['5','architecture-gate','после генерации архитектурных артефактов','BLOCKED до устранения расхождений со schema/spec'],
+      ['6','review-blocker','перед выбором следующей задачи','закрыть IN_REVIEW / CHANGES_REQUESTED / BLOCKED'],
+    ]);
+    html += card('var(--red)', 'Quality Gates — порядок', b, false);
+  }
+
+  // Секция 4 — Review Loop (green, full-width)
+  {
+    let b = list([
+      'Реализация + тесты (Claude Code)',
+      'Self-review: /reviewcode (optional)',
+      'Test Gate: TEST_REPORT result=PASS',
+      'REVIEW_HANDOFF → передача Codex',
+      'Codex review → verdict',
+      'CHANGES_REQUESTED → исправления → повторный review loop',
+      'APPROVED → Docs sync',
+      'optional: /architecture → Architecture Gate',
+      '/status → Review Blocker → следующая задача',
+    ]);
+    html += card('var(--green)', 'Review Loop', b, true);
+  }
+
+  // Секция 5 — Стандартные сценарии (amber, узкая)
+  {
+    let b = tbl(['Workflow','Файл','Когда'], [
+      ['preflight','workflows/preflight.md','Начало рабочего дня'],
+      ['up','workflows/up.md','Запуск проекта'],
+      ['bug-report','workflows/bug-report-from-failure.md','Баг из CI'],
+      ['ui-smoke','workflows/ui-smoke-generic.md','UI проверки'],
+      ['retest','workflows/retest-closed-bugs.md','Регрессионное тестирование'],
+    ]);
+    html += card('var(--amber)', 'Стандартные сценарии', b, false);
+  }
+
+  html += `</div>`;
+  $('p-practice').innerHTML = html;
+}
 
 // ── Cheatsheet panel ──
 {
